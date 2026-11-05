@@ -4,6 +4,7 @@ import { getChainId, switchChain } from 'viem/actions'
 import type { EIP1193Provider, Transport } from 'viem'
 import type { Address, Hex, PublicConfig } from '../shared/domain'
 import { ArkivReadError, readWorkshop, createWorkshopClient } from './read'
+import type { WorkshopReadClient } from './read'
 import {
   WorkshopSchema,
   addressesEqual,
@@ -56,6 +57,8 @@ export type WriteContext = {
   transport: WalletTransport
   /** The connected wallet account (e.g. from the wallet provider state). */
   account: Address
+  /** Optional pre-built public client for the owner lookup (reuse or tests). */
+  publicClient?: WorkshopReadClient
 }
 
 export type PublishResult = { entityKey: Hex; txHash: Hex; expiresAtBlock: string }
@@ -160,7 +163,7 @@ export async function updateWorkshop(ctx: WriteContext, entityKey: Hex, changes:
   // Fail closed: ownership is checked from chain state before anything is signed.
   let owner: Address
   try {
-    const current = await readWorkshop(createWorkshopClient(ctx.config), ctx.config, key)
+    const current = await readWorkshop(ctx.publicClient ?? createWorkshopClient(ctx.config), ctx.config, key)
     if (current === null) throw new ArkivWriteError('NOT_FOUND', 'This listing was not found. It may have expired or is not a Tool City listing.')
     owner = current.ownerAddress
   } catch (error) {

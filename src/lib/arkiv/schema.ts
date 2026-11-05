@@ -79,13 +79,10 @@ function validateActive(value: unknown): boolean {
 /** Attributes for createEntity. Checkout fields come from configured terms, never from the form. */
 export function encodeWorkshopCreate(input: PublishWorkshopInput, terms: CheckoutTerms | null) {
   if (terms === null) throw new WorkshopInputError('terms', 'Checkout terms are not configured; a listing cannot be published yet.')
-  if (
-    normalizeAddress(terms.checkoutAddress) === null ||
-    normalizeBytes32(terms.serviceId) === null ||
-    normalizeBytes32(terms.termsHash) === null ||
-    !Number.isSafeInteger(terms.chainId) ||
-    terms.chainId <= 0
-  ) {
+  const checkoutAddress = normalizeAddress(terms.checkoutAddress)
+  const serviceId = normalizeBytes32(terms.serviceId)
+  const termsHash = normalizeBytes32(terms.termsHash)
+  if (checkoutAddress === null || serviceId === null || termsHash === null || !Number.isSafeInteger(terms.chainId) || terms.chainId <= 0) {
     throw new WorkshopInputError('terms', 'Configured checkout terms are malformed.')
   }
   return {
@@ -97,9 +94,9 @@ export function encodeWorkshopCreate(input: PublishWorkshopInput, terms: Checkou
     sourceLang: WORKSHOP_SOURCE_LANG,
     targetLang: WORKSHOP_TARGET_LANG,
     checkoutChainId: u64(BigInt(terms.chainId)),
-    checkoutAddress: addr(terms.checkoutAddress),
-    serviceId: key(terms.serviceId),
-    termsHash: key(terms.termsHash),
+    checkoutAddress: addr(checkoutAddress),
+    serviceId: key(serviceId),
+    termsHash: key(termsHash),
   }
 }
 
