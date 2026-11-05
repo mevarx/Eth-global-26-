@@ -1,20 +1,23 @@
 # Frontend / Arkiv handoff (Agent B)
 
 Status: the Arkiv adapter is code-complete against SDK 1.0.1. Nothing has been signed, so the on-chain write behavior is **pending manual verification**. No root app exists in this checkout, so root lint, typecheck and build have **not been run**.
+No TEMPORARY stand-ins are in use: the adapter needs only domain.ts types (api.ts, validation.ts, deployment.ts and the ABI are not used). Its own error classes (ArkivReadError, ArkivWriteError, WorkshopInputError) live in src/lib/arkiv/.
 
 ```text
 Commit / common contract version:
-  Branch codex/city-frontend. Contract v1.0 section 5 types. The Arkiv code imports `../shared/domain`
-  (Address, Hex, CheckoutTerms, PublicConfig, WorkshopView), which is not in this checkout. It was
-  typechecked against a stub copied from the contract and kept outside the repo. Re-check against A's real file.
+  Branch codex/city-frontend, merged with origin/codex/initial-readme (the only remote branch and the repo default).
+  Contract v1.0 section 5 types. src/lib/shared/domain.ts is a verbatim copy of the contract types, committed alone as a
+  bootstrap placeholder; the integrator's file wins on merge. The reference docs are at the repo ROOT
+  (common_project_structure.md, varx_frontend_arkiv.md), not under docs/.
 
 Files changed:
+  src/lib/shared/domain.ts (verbatim placeholder, separate commit)
   src/lib/arkiv/schema.ts, read.ts, write.ts, arkiv.test.ts
   arkiv/schema.md, arkiv/friction.md, arkiv/list-workshops.ts
   docs/frontend-handoff.md, .gitignore (ignores the two reference docs)
 
 Commands run and actual results:
-  Run in a scratch dir outside the repo (strict TS + noUncheckedIndexedAccess, bundler resolution):
+  Run in a scratch dir outside the repo, against the committed domain.ts (strict TS + noUncheckedIndexedAccess, bundler resolution):
     tsc --noEmit                              -> 0 errors
     tsx --test src/lib/arkiv/arkiv.test.ts    -> 13 pass, 0 fail (synthetic fixtures, no network)
     list-workshops.ts against the public Rabdi RPC -> {"count": 0}  (read-only; the query ran, catalogue empty)
