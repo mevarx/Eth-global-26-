@@ -4,20 +4,38 @@
 // Loading / failed / empty states stay distinct; a failed refresh never proves
 // withdrawal, expiry, or deletion.
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import NavLinks from "@/components/app/NavLinks";
 import WalletControls from "@/components/wallet/WalletControls";
-import CityPanel from "@/components/city/CityPanel";
+import BriefEvidence from "@/components/briefs/BriefEvidence";
+import BriefIntakeForm from "@/components/briefs/BriefIntakeForm";
+import OpportunityPublisher from "@/components/briefs/OpportunityPublisher";
+import OpportunityReader from "@/components/briefs/OpportunityReader";
+import ReleaseDesk from "@/components/briefs/ReleaseDesk";
 import CityScene from "@/components/city/CityScene";
 import { briefStateToScene } from "@/components/city/brief-state-to-scene";
+import type { ExplainerId } from "@/components/city/explainers";
 import type { BuildingId } from "@/components/city/scene-config";
+import BriefMintGlassPanel, { type PanelTab } from "@/components/hud/BriefMintGlassPanel";
+import ExplainerPanel from "@/components/hud/ExplainerPanel";
 import { readOpportunitiesIndependent } from "@/lib/arkiv/opportunities-independent";
 import { briefmintApi, isApiError } from "@/lib/client/briefmint-api";
 import { useBriefs } from "@/lib/client/use-briefs";
 import { useSession } from "@/lib/client/use-session";
 import { isCurrentSessionGeneration, currentSessionGeneration } from "@/lib/client/session-generation";
-import type { BriefmintConfig, BriefView, OpportunityFilters, OpportunityView } from "@/lib/shared/briefmint";
+import { devFixturesEnabled } from "@/lib/shared/fixtures";
+import type { BriefFreshness, BriefmintConfig, BriefView, OpportunityFilters, OpportunityView } from "@/lib/shared/briefmint";
 
 const ACTIVE_BRIEF_POLL = new Set(["running", "pending"]);
+
+// The panel tab follows the selected building.
+const TAB_FOR_BUILDING: Record<BuildingId, PanelTab> = {
+  home: "briefs",
+  studio: "overview",
+  treasury: "briefs",
+  registry: "opportunities",
+  archive: "briefs",
+};
 
 export default function HomePage() {
   const sessionQ = useSession();
@@ -31,7 +49,14 @@ export default function HomePage() {
   const [oppFilters, setOppFilters] = useState<OpportunityFilters>({ status: "open" });
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [building, setBuilding] = useState<BuildingId>("home");
+  const [building, setBuildingState] = useState<BuildingId>("home");
+  const [tab, setTab] = useState<PanelTab>(TAB_FOR_BUILDING.home);
+  const [explainerId, setExplainerId] = useState<ExplainerId | null>(null);
+  const setBuilding = (b: BuildingId) => {
+    setBuildingState(b);
+    setTab(TAB_FOR_BUILDING[b]);
+    setExplainerId(null);
+  };
   const [storedBrief, setBrief] = useState<BriefView | null>(null);
   const brief = address && storedBrief?.ownerAddress.toLowerCase() === address.toLowerCase() ? storedBrief : null;
   const briefsQ = useBriefs(!!address, undefined, address);
@@ -171,7 +196,30 @@ export default function HomePage() {
     }
   };
 
-  const selectedOpportunity = opportunities.find((o) => o.entityKey === selectedKey) ?? null;
+  // Opens a saved brief from the panel or a district house; same guards as the poll and run code.
+  const handleSelectBrief = async (id: string) => {
+    if (!address) return;
+    const epoch = briefOperationEpoch.current;
+    const generation = currentSessionGeneration();
+    try {
+      const loaded = await briefmintApi.getBrief(id, address);
+      if (epoch === briefOperationEpoch.current && isCurrentSessionGeneration(generation)) setBrief(loaded);
+    } catch {
+      /* Keep the current view if the read is unavailable. */
+    }
+  };
+
+  const openExplainer = (id: ExplainerId) => {
+    setExplainerId(id);
+    setTab("explain");
+  };
+  const handleTabChange = (t: PanelTab) => {
+    setTab(t);
+    if (t !== "explain") setExplainerId(null);
+  };
+
+  const firstReadDone = lastRefresh !== null || oppError !== null;
+  const freshness: BriefFreshness = oppError && opportunities.length === 0 ? "unavailable" : oppStale ? "stale" : "fresh";
   const scene = briefStateToScene(brief);
   const approved = brief?.review.status === "approved" && brief.review.approval?.draftRevision === brief.draftRevision;
 
@@ -226,37 +274,69 @@ export default function HomePage() {
             <p className="notice notice-warn" role="status">Some BriefMint services are not ready: intake, compilation or Arkiv may be unavailable.</p>
           ) : null
         }
-        consoleTop={
-          <div className="console-top">
-            <div className="console-title">
-              <span className="console-name">BriefMint</span>
-              <span className="console-sub">Tool City · private notes → public opportunity</span>
-            </div>
-            <NavLinks />
-            <WalletControls />
-          </div>
-        }
+        district={{
+          briefs: address && briefsQ.data ? briefSummaries : null,
+          brief,
+          opportunities: firstReadDone ? opportunities : null,
+          freshness,
+          signedIn: Boolean(address),
+          selectedId: tab === "opportunities" ? selectedKey : brief?.id ?? null,
+          onSelectBrief: (id) => {
+            void handleSelectBrief(id);
+            handleTabChange("briefs");
+          },
+          onSelectOpportunity: (key) => {
+            setSelectedKey(key);
+            handleTabChange("opportunities");
+          },
+          onOpenTab: handleTabChange,
+        }}
+        explainer={{ selected: explainerId, onOpen: openExplainer }}
       >
-        <CityPanel key={address ?? "logged-out"}
-          building={building}
-          brief={brief}
+        <BriefMintGlassPanel
+          key={address ?? "logged-out"}
+          variant="panel"
+          tab={tab}
+          onTabChange={handleTabChange}
+          session={{ address, loading: sessionQ.loading }}
+          config={briefConfig}
+          configError={briefConfigError}
           briefs={briefSummaries}
           briefsLoading={briefsLoading}
+          brief={brief}
+          onSelectBrief={(id) => void handleSelectBrief(id)}
+          intake={<BriefIntakeForm onCreated={(b) => { setBrief(b); setBuilding("studio"); }} />}
+          briefActions={
+            brief ? (
+              <>
+                <ReleaseDesk key={`${brief.id}:${brief.draftRevision}`} brief={brief} onSaved={setBrief} />
+                <OpportunityPublisher brief={brief} onSaved={setBrief} rpcLabel="Rabdi 7794095" />
+                <BriefEvidence brief={brief} />
+                <Link className="bm-btn" href={`/briefs/${brief.id}`}>Open full brief</Link>
+              </>
+            ) : null
+          }
+          nextAction={nextAction}
+          runError={runError}
           opportunities={opportunities}
           opportunitiesLoading={oppLoading}
           opportunitiesError={oppError}
           opportunitiesStale={oppStale}
           lastRefresh={lastRefresh}
-          onRefreshOpportunities={() => void loadOpportunities(oppFilters)}
-          oppFilters={oppFilters}
-          onOppFiltersChange={handleFiltersChange}
-          selectedOpportunity={selectedOpportunity}
+          filters={oppFilters}
+          onFiltersChange={handleFiltersChange}
+          onRefresh={() => void loadOpportunities(oppFilters)}
+          selectedOpportunityKey={selectedKey}
           onSelectOpportunity={(o) => setSelectedKey(o.entityKey)}
-          onBriefCreated={(b) => { setBrief(b); setBuilding("studio"); }}
-          onBriefChange={setBrief}
-          onRunBrief={handleRun}
-          runBusy={runBusy}
-          runError={runError}
+          opportunityTools={<OpportunityReader />}
+          explain={<ExplainerPanel explainerId={explainerId} onClose={() => setExplainerId(null)} onSelect={openExplainer} />}
+          headerExtra={
+            <div className="console-top">
+              <NavLinks />
+              <WalletControls />
+            </div>
+          }
+          fixture={devFixturesEnabled()}
         />
       </CityScene>
     </div>
