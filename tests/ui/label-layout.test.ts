@@ -110,7 +110,7 @@ test("small labels never overlap and are hidden instead of colliding; building l
   const specs = [...small, ...buildings];
   const out = layoutLabels(specs, cam, { w: 1440, h: 900 }, SCENARIOS[0].avoid);
   const shown = out.map((p, i) => ({ p, s: specs[i] })).filter((x) => !x.p.hidden);
-  assert.ok(out.filter((p, i) => specs[i].kind === "building").every((p) => !p.hidden));
+  assert.ok(out.filter((_p, i) => specs[i].kind === "building").every((placement) => !placement.hidden));
   for (let i = 0; i < shown.length; i++)
     for (let j = i + 1; j < shown.length; j++)
       assert.ok(

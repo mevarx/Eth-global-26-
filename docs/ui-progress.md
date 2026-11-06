@@ -60,3 +60,18 @@ Deviation: Phase 2 started in parallel with Phase 1 (only depended on Phase 0 co
 ## Phase 3 remaining
 City wiring: engine removals (plates/tags, boats, fillers, coastal palms), CityScene overlay stack + camera
 store + ticker + labels + glass HUD, page.tsx -> BriefMintGlassPanel. Then smoke test + screenshots.
+
+## Phase 3 checkpoint (2026-11-06)
+Committed city wiring in `42f47bb`: `BriefMintGlassPanel` replaces CityPanel; scene overlays are camera-synced;
+old Pixi plates/tags, boats, filler houses/towers and coastal tree loop were removed; engine workbench inset
+uses the actual HUD panel geometry. Dashboard-only route layouts wire DashboardBackdrop; `/` imports no shader.
+
+## Phase 4 checkpoint
+Added `docs/ui-audit.md`. Knip, security/privacy and UI-language searches were run. One unused local in
+`tests/ui/label-layout.test.ts` was corrected; display-only USD and “Paid placements” fixture wording removed;
+city mobile CSS keeps the world behind glass HUD; dashboard legacy footer is hidden. Remaining audit candidates
+and unverified checks are listed in the audit document, not claimed complete.
+
+## Phase 5 / final checkpoint
+SA-7 read-only review: pending final check. Final static checks, production build, route smoke, screenshots,
+reviewer failures and manually outstanding wallet/device work are to be added here before handoff.

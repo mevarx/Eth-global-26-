@@ -122,3 +122,6 @@ What Agent A must merge or do next:
 - The engine only reads `CityState`. Camera moves write a CSS transform onto the hit layer; no
   React state per frame. Fixture previews never get green/live colouring on tags or chips.
 - Narrow screens: the map becomes a 62vh viewport and the windows stack below it.
+
+## UI polish handoff — 2026-11-06
+The presentation pass added the dashboard-only cloud backdrop, design tokens/next-font setup, glass HUD and Adjust glass control, Opportunities cards/filters, and deterministic city overlays for record plots, landmarks, scenery, boats and ambient routes. Phase commits and evidence are recorded in `docs/ui-progress.md` and `docs/ui-audit.md`. Added exact packages: gsap 3.15.1, @gsap/react 2.1.2, lucide-react 1.70.0. The VM has no wallet and the BriefMint session/brief APIs report unavailable; real wallet and Arkiv lifecycle behavior was not tested. Headless screenshots are saved outside Git at `/tmp/shots/` (desktop/mobile); the mobile city screenshot was refreshed after the responsive overlay adjustment.
