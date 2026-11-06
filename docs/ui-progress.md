@@ -1,9 +1,13 @@
 # UI polish progress (checkpoint)
 
-Phase: Step 0 complete. STOPPED on a hard blocker before Phase 0.
+Phase: Phase 0 complete; Phase 1 (SA-8, SA-9, SA-1, SA-6) starting.
 Rollback tag: `pre-ui-polish` (33f3847).
 
-## Hard blocker
+## Former blocker (resolved 2026-11-06)
+The owner supplied both reference components; they are in docs/reference/. The PRD is still absent;
+proxies are listed in docs/ui-brief.md section 6.1.
+
+### Original note
 The task requires these inputs, and none of them exist in this checkout or on any remote branch
 (checked: briefmint/frontend-city, briefmint/fullstack, codex/city-frontend, codex/final-rework,
 codex/initial-readme, codex/payment-backend, codex/project-cleanup-readme,
@@ -35,3 +39,14 @@ Next step: commit those files under `docs/` (and the PRD), then resume at Phase 
 - `npm run lint` exit 0; `npm run typecheck` exit 0
 - `npm test`: vitest 19 files / 182 tests pass; UI smoke 27 pass, 0 fail
 - `npm run build`: exit 0 (Vite demo + Next, 31 app routes)
+
+## Done
+- References saved to docs/reference/ (verbatim; demos included).
+- gsap 3.15.1, @gsap/react 2.1.2, lucide-react 1.70.0 added (exact, root lockfile only).
+- src/components/ui/{cloud-shader,adjustable-glass-dashboard}.tsx copied (inline styles; \r\n fix).
+- Phase 0: src/components/city/slots.ts (+tests), camera-store.ts, ambient-ticker.ts (+tests);
+  scripts/run-ui-smoke.cjs now runs every tests/ui/*.test.ts.
+- Shared brief for subagents: docs/ui-brief.md.
+
+## Next
+Phase 1 subagents, then Phase 2, Phase 3 wiring, Phase 4 audit, Phase 5 review, Phase 6 report.
