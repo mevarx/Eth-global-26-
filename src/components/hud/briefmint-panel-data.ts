@@ -342,8 +342,8 @@ export interface GlassSettings {
 }
 export type GlassScope = "city" | "dashboard";
 
-/** `--bm-scene-wall-light`: the brightest scene color a city panel can sit over. */
-export const BRIGHTEST_SCENE_HEX = "#f4f1e6";
+/** Worst case behind a city panel: white walls and surf foam (SA-9 contrast check). */
+export const BRIGHTEST_SCENE_HEX = "#ffffff";
 /** Smallest city opacity keeping text-primary at 4.5:1 over the brightest scene color (shared helper, no underlay credit). */
 export const CITY_MIN_TEXT_GLASS_OPACITY = CITY_MIN_GLASS_OPACITY_FOR(TEXT_PRIMARY_HEX, BRIGHTEST_SCENE_HEX);
 export { DASHBOARD_MIN_TEXT_GLASS_OPACITY };
