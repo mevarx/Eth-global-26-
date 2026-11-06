@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export type CloudShaderProps = {
   className?: string;
+  // BRIEFMINT PATCH: style passthrough for the wrapper.
+  style?: React.CSSProperties;
   children?: React.ReactNode;
   /** Animation speed multiplier. 1 = default drift. */
   speed?: number;
@@ -15,6 +17,13 @@ export type CloudShaderProps = {
   skyTopColor?: string;
   /** Sky color at the bottom (hex or rgb string). */
   skyBottomColor?: string;
+  // BRIEFMINT PATCH: performance caps. Backing size = client size x min(devicePixelRatio, maxDpr) x resolutionScale.
+  /** Upper bound for devicePixelRatio. */
+  maxDpr?: number;
+  /** Extra backing-store scale; CSS stretches the canvas. */
+  resolutionScale?: number;
+  /** Maximum draws per second. */
+  maxFps?: number;
 };
 
 const VERT = `
@@ -222,16 +231,31 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
   return shader;
 }
 
+// BRIEFMINT PATCH: pending delayed loseContext() per canvas, so React StrictMode's
+// mount/cleanup/mount does not reuse a context that was already force-lost.
+const pendingLoseContext = new WeakMap<
+  HTMLCanvasElement,
+  ReturnType<typeof setTimeout>
+>();
+
 export const CloudShader = ({
   className,
+  style,
   children,
   speed = 1,
   count = 6,
   cloudColor = "#fbf8f2",
   skyTopColor = "#3876ba",
   skyBottomColor = "#8cbfe8",
+  // BRIEFMINT PATCH: new props.
+  maxDpr = 1,
+  resolutionScale = 0.75,
+  maxFps = 30,
 }: CloudShaderProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // BRIEFMINT PATCH: failed state hides the canvas and shows a CSS gradient instead.
+  const [failed, setFailed] = useState(false);
+  const redrawRef = useRef<(() => void) | null>(null);
   const paramsRef = useRef({
     speed,
     count,
@@ -251,31 +275,208 @@ export const CloudShader = ({
     };
   });
 
+  // BRIEFMINT PATCH: repaint when a static frame is showing (reduced motion / paused).
+  useEffect(() => {
+    redrawRef.current?.();
+  }, [speed, count, cloudColor, skyTopColor, skyBottomColor]);
+
+  // BRIEFMINT PATCH: the whole effect below is rewritten for pause/cap/failure/cleanup.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext("webgl", {
+    const pending = pendingLoseContext.get(canvas);
+    if (pending !== undefined) {
+      clearTimeout(pending);
+      pendingLoseContext.delete(canvas);
+    }
+
+    let gl: WebGLRenderingContext | null = null;
+    let vert: WebGLShader | null = null;
+    let frag: WebGLShader | null = null;
+    let program: WebGLProgram | null = null;
+    let buffer: WebGLBuffer | null = null;
+    let observer: ResizeObserver | null = null;
+    let io: IntersectionObserver | null = null;
+    let frame = 0;
+    let looping = false;
+    let lost = false;
+    let disposed = false;
+    let visible = true;
+    let lastTick: number | null = null;
+    let lastDraw = -Infinity;
+    let elapsedMs = 0;
+
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduceMotion = mql.matches;
+
+    const loc: Record<
+      "res" | "time" | "count" | "cloud" | "skyTop" | "skyBottom",
+      WebGLUniformLocation | null
+    > = {
+      res: null,
+      time: null,
+      count: null,
+      cloud: null,
+      skyTop: null,
+      skyBottom: null,
+    };
+
+    const stopLoop = () => {
+      looping = false;
+      cancelAnimationFrame(frame);
+      lastTick = null;
+    };
+
+    const releaseGl = (immediate: boolean) => {
+      if (gl) {
+        if (buffer) gl.deleteBuffer(buffer);
+        if (program) gl.deleteProgram(program);
+        if (vert) gl.deleteShader(vert);
+        if (frag) gl.deleteShader(frag);
+      }
+      buffer = null;
+      program = null;
+      vert = null;
+      frag = null;
+      redrawRef.current = null;
+      const ctx = gl;
+      gl = null;
+      if (!ctx) return;
+      const lose = () => {
+        try {
+          ctx.getExtension("WEBGL_lose_context")?.loseContext();
+        } catch {
+          /* context already gone */
+        }
+        pendingLoseContext.delete(canvas);
+      };
+      if (immediate) lose();
+      else pendingLoseContext.set(canvas, setTimeout(lose, 0));
+    };
+
+    const teardownObservers = () => {
+      observer?.disconnect();
+      io?.disconnect();
+      observer = null;
+      io = null;
+      document.removeEventListener("visibilitychange", onVisibility);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      mql.removeEventListener?.("change", onMotionChange);
+    };
+
+    const fail = () => {
+      if (disposed) return;
+      stopLoop();
+      teardownObservers();
+      releaseGl(true);
+      disposed = true;
+      setFailed(true);
+    };
+
+    const render = (timeMs: number) => {
+      if (!gl || lost) return;
+      const p = paramsRef.current;
+      const cloud = parseHex(p.cloudColor);
+      const skyTop = parseHex(p.skyTopColor);
+      const skyBottom = parseHex(p.skyBottomColor);
+
+      gl.uniform1f(loc.time, (timeMs / 1000) * p.speed);
+      gl.uniform1f(loc.count, Math.min(6, Math.max(1, p.count)));
+      gl.uniform3f(loc.cloud, cloud[0], cloud[1], cloud[2]);
+      gl.uniform3f(loc.skyTop, skyTop[0], skyTop[1], skyTop[2]);
+      gl.uniform3f(loc.skyBottom, skyBottom[0], skyBottom[1], skyBottom[2]);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+
+    const drawStatic = () => {
+      if (!looping) render(reduceMotion ? 0 : elapsedMs);
+    };
+
+    const draw = (now: number) => {
+      if (!looping) return;
+      frame = requestAnimationFrame(draw);
+      // Accumulate elapsed time so a resume after a pause does not jump.
+      if (lastTick !== null) elapsedMs += now - lastTick;
+      lastTick = now;
+      const minInterval = 1000 / Math.max(1, maxFps);
+      if (now - lastDraw < minInterval - 1) return;
+      lastDraw = now;
+      render(elapsedMs);
+    };
+
+    const sync = () => {
+      if (disposed || lost) return;
+      const shouldLoop = !reduceMotion && visible && !document.hidden;
+      if (shouldLoop && !looping) {
+        looping = true;
+        lastTick = null;
+        frame = requestAnimationFrame(draw);
+      } else if (!shouldLoop && looping) {
+        stopLoop();
+      }
+      if (reduceMotion) render(0);
+    };
+
+    function onVisibility() {
+      sync();
+    }
+    function onMotionChange(event: MediaQueryListEvent) {
+      reduceMotion = event.matches;
+      sync();
+    }
+    function onContextLost(event: Event) {
+      event.preventDefault();
+      lost = true;
+      fail();
+    }
+
+    const resize = () => {
+      if (!gl) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, Math.max(0.1, maxDpr));
+      const scale = dpr * Math.max(0.1, resolutionScale);
+      const w = Math.max(1, Math.floor(canvas.clientWidth * scale));
+      const h = Math.max(1, Math.floor(canvas.clientHeight * scale));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, w, h);
+      gl.uniform2f(loc.res, w, h);
+      // Resizing clears the buffer; repaint immediately when no loop will.
+      drawStatic();
+    };
+
+    canvas.addEventListener("webglcontextlost", onContextLost);
+
+    gl = canvas.getContext("webgl", {
       alpha: false,
       antialias: false,
       premultipliedAlpha: false,
     });
-    if (!gl) return;
+    if (!gl) {
+      fail();
+      return;
+    }
 
-    const vert = compile(gl, gl.VERTEX_SHADER, VERT);
-    const frag = compile(gl, gl.FRAGMENT_SHADER, FRAG);
-    if (!vert || !frag) return;
-
-    const program = gl.createProgram();
-    if (!program) return;
+    vert = compile(gl, gl.VERTEX_SHADER, VERT);
+    frag = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+    program = vert && frag ? gl.createProgram() : null;
+    if (!vert || !frag || !program) {
+      fail();
+      return;
+    }
     gl.attachShader(program, vert);
     gl.attachShader(program, frag);
     gl.bindAttribLocation(program, 0, "a_pos");
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      fail();
+      return;
+    }
     gl.useProgram(program);
 
-    const buffer = gl.createBuffer();
+    buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -285,69 +486,41 @@ export const CloudShader = ({
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const loc = {
-      res: gl.getUniformLocation(program, "u_res"),
-      time: gl.getUniformLocation(program, "u_time"),
-      count: gl.getUniformLocation(program, "u_count"),
-      cloud: gl.getUniformLocation(program, "u_cloud"),
-      skyTop: gl.getUniformLocation(program, "u_skyTop"),
-      skyBottom: gl.getUniformLocation(program, "u_skyBottom"),
-    };
+    loc.res = gl.getUniformLocation(program, "u_res");
+    loc.time = gl.getUniformLocation(program, "u_time");
+    loc.count = gl.getUniformLocation(program, "u_count");
+    loc.cloud = gl.getUniformLocation(program, "u_cloud");
+    loc.skyTop = gl.getUniformLocation(program, "u_skyTop");
+    loc.skyBottom = gl.getUniformLocation(program, "u_skyBottom");
 
-    let frame = 0;
-    let running = true;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    redrawRef.current = drawStatic;
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
-      const w = Math.max(1, Math.floor(width * dpr));
-      const h = Math.max(1, Math.floor(height * dpr));
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-      }
-      gl.viewport(0, 0, w, h);
-      gl.uniform2f(loc.res, w, h);
-    };
-
-    const observer = new ResizeObserver(resize);
+    observer = new ResizeObserver(resize);
     observer.observe(canvas);
     resize();
 
-    const start = performance.now();
-    const draw = (now: number) => {
-      if (!running) return;
-      const p = paramsRef.current;
-      const elapsed = reduceMotion ? 0 : ((now - start) / 1000) * p.speed;
-      const cloud = parseHex(p.cloudColor);
-      const skyTop = parseHex(p.skyTopColor);
-      const skyBottom = parseHex(p.skyBottomColor);
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver((entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) return;
+        visible = entry.isIntersecting;
+        sync();
+      });
+      io.observe(canvas);
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    mql.addEventListener?.("change", onMotionChange);
 
-      gl.uniform1f(loc.time, elapsed);
-      gl.uniform1f(loc.count, Math.min(6, Math.max(1, p.count)));
-      gl.uniform3f(loc.cloud, cloud[0], cloud[1], cloud[2]);
-      gl.uniform3f(loc.skyTop, skyTop[0], skyTop[1], skyTop[2]);
-      gl.uniform3f(loc.skyBottom, skyBottom[0], skyBottom[1], skyBottom[2]);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      frame = requestAnimationFrame(draw);
-    };
-
-    frame = requestAnimationFrame(draw);
+    sync();
 
     return () => {
-      running = false;
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-      gl.deleteShader(vert);
-      gl.deleteShader(frag);
+      if (disposed) return;
+      disposed = true;
+      stopLoop();
+      teardownObservers();
+      releaseGl(false);
     };
-  }, []);
+  }, [maxDpr, resolutionScale, maxFps]);
 
   return (
     // BRIEFMINT PATCH: no Tailwind or cn() in this repo; equivalent inline styles.
@@ -359,18 +532,34 @@ export const CloudShader = ({
         minHeight: "20rem",
         width: "100%",
         overflow: "hidden",
+        ...style,
       }}
     >
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-        }}
-      />
+      {failed ? (
+        <div
+          aria-hidden="true"
+          data-briefmint-backdrop-fallback="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: `linear-gradient(to bottom, ${skyTopColor}, ${skyBottomColor})`,
+          }}
+        />
+      ) : (
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          data-briefmint-backdrop="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {children ? (
         <div
           style={{
