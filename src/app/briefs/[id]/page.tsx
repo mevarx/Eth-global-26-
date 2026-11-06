@@ -128,10 +128,14 @@ export default function BriefDetailPage() {
 
   return (
     <AppShell>
-      <div className="tc-page">
-        <p><Link href="/briefs">← My Briefs</Link></p>
-        <h1>Brief detail</h1>
-        {body}
+      <div className="bm-dash-page">
+        <header className="bm-glass bm-glass--text bm-dash-panel">
+          <p><Link href="/briefs">← My Briefs</Link></p>
+          <h1>Brief detail</h1>
+        </header>
+        <section className="bm-glass bm-glass--text bm-dash-panel" aria-label="Brief">
+          {body}
+        </section>
       </div>
     </AppShell>
   );

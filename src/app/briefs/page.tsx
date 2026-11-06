@@ -38,10 +38,14 @@ export default function BriefsPage() {
 
   return (
     <AppShell>
-      <div className="tc-page">
-        <h1>My Briefs</h1>
-        <p className="tc-muted">Owner-only. Reopening a brief loads saved content, never recompiles.</p>
-        {body}
+      <div className="bm-dash-page">
+        <header className="bm-glass bm-glass--text bm-dash-panel">
+          <h1>My Briefs</h1>
+          <p>Owner-only. Reopening a brief loads saved content, never recompiles.</p>
+        </header>
+        <section className="bm-glass bm-glass--text bm-dash-panel" aria-label="Your briefs">
+          {body}
+        </section>
       </div>
     </AppShell>
   );
