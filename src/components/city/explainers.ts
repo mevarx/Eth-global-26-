@@ -85,7 +85,7 @@ export const EXPLAINERS: Record<ExplainerId, Explainer> = {
       "Approval is bound to the exact revision and a canonical public payload, so later edits cannot silently publish.",
     doesNotProve: [
       "That the compiled output is correct or well redacted.",
-      "That an advertised budget is funded. Budgets are unfunded, and BriefMint never holds or moves funds.",
+      "That stored private data is encrypted at the application level in this MVP.",
     ],
     whereYouSeeIt: "Planning Desk, AI Studio, Release Desk, Registry Hall and Archive.",
     steps: [
