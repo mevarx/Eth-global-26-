@@ -201,16 +201,18 @@
 .hud-field { display: grid; gap: 0.35rem; }
 .console-top { display: grid; gap: var(--bm-space-3); }
 @media (max-width: 1000px) {
-  .game { position: relative; inset: auto; overflow: visible; background: var(--paper-deep); }
-  .hud-layer { position: relative; flex-direction: column; padding: 1rem; }
-  .hud-col--left, .hud-col--right { width: auto; }
-  .hud-col--right { order: 0; height: min(78svh, 720px); }
-  .hud-col--left { order: 1; }
+  .game { position: fixed; inset: 0; overflow: hidden; background: var(--water); }
+  .hud-layer { position: absolute; display: block; padding: 1rem; }
+  .hud-col--right { position: absolute; top: 1rem; right: 1rem; width: min(420px, 52vw); height: min(72svh, 720px); }
+  .hud-col--left { position: absolute; left: 1rem; bottom: 1rem; width: min(340px, 38vw); max-height: 38svh; overflow: auto; }
   .hud-col-spacer { display: none; }
-  .game-world { position: relative; height: 44vh; min-height: 320px; background: var(--water); touch-action: pan-y; }
+  .game-world { position: absolute; inset: 0; height: auto; min-height: 0; background: var(--water); touch-action: none; }
 }
 @media (max-width: 540px) {
   .hud-layer { padding: 0.65rem; }
+  .hud-col--right { top: 0.65rem; left: 0.65rem; right: 0.65rem; width: auto; height: 53svh; }
+  .hud-col--left { left: 0.65rem; right: 0.65rem; bottom: 0.65rem; width: auto; max-height: 31svh; }
+  .hud-col { gap: 0.45rem; }
 }
 
 /* ---------- global motion switch ---------- */

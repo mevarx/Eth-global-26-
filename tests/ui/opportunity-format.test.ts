@@ -72,8 +72,8 @@ test("dates and refresh times format deterministically and fail honestly", () =>
 test("budget shows only an advertised amount", () => {
   assert.equal(formatBudget(null), null);
   assert.equal(formatBudget(-1), null);
-  assert.equal(formatBudget(45000), "450 USD");
-  assert.equal(formatBudget(12050), "120.50 USD");
+  assert.equal(formatBudget(45000), "450");
+  assert.equal(formatBudget(12050), "120.50");
 });
 
 test("default filters and fixture state parsing", () => {

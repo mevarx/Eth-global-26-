@@ -100,7 +100,7 @@ export function formatBudget(cents: number | null): string | null {
   const text = Number.isInteger(units)
     ? units.toLocaleString("en-US")
     : units.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${text} USD`;
+  return text;
 }
 
 export function fixtureStateFromSearch(search: string): FixtureState {
@@ -115,7 +115,7 @@ export function fixtureOpportunities(): OpportunityView[] {
   const base = {
     ownerAddress: FIXTURE_OWNER,
     language: "en" as const,
-    exclusions: ["Paid placements"],
+    exclusions: [],
     openQuestions: ["Who reviews the final draft?"],
     contactUrl: null,
     revision: 1,

@@ -98,7 +98,7 @@
 .opp-card:hover { transform: translateY(-2px); }
 .opp-card--selected { outline: 2px solid var(--bm-accent); outline-offset: -2px; }
 .opp-card__chips { display: flex; flex-wrap: wrap; gap: var(--bm-space-1); }
-.opp-card__title { margin: 0; font: 600 var(--bm-text-lg)/1.3 var(--bm-font-heading); overflow-wrap: anywhere; }
+.opp-card__title { margin: 0; text-transform: none; letter-spacing: normal; font: 600 var(--bm-text-lg)/1.3 var(--bm-font-heading); overflow-wrap: anywhere; }
 .opp-card__select {
   all: unset; box-sizing: border-box; cursor: pointer; color: var(--bm-text-primary);
 }
