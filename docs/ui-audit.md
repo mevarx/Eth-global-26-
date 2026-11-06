@@ -21,3 +21,11 @@ Date: 2026-11-06. Scope: presentation surfaces added or rewired for the UI polis
 - No test exercised a real wallet or live Arkiv lifecycle. No real device check, 10-navigation WebGL leak test, forced context-loss/no-WebGL fallback, shader frame-time benchmark, exhaustive all-route browser-console audit, or complete no-sub-12px scan of legacy styling was performed.
 - The verbatim reference dashboard copy intentionally retains its demo-only CSS and two ESLint warnings; it is not rendered. The original source and syntax fix are preserved.
 - Screenshot evidence is outside Git under `/tmp/shots/` and `/tmp/verify/`; see final handoff for checked viewports and current limitations.
+
+## Final local checks (after presentation cleanup)
+- `npm run lint`: exit 0, 0 errors, 2 warnings confined to the unrendered reference copy (`adjustable-glass-dashboard.tsx`: reference `useEffect` dependency and `<img>` use).
+- `npm run typecheck`: exit 0. `npx tsc --noEmit --noUnusedLocals --noUnusedParameters`: exit 0 after removing one unused callback parameter from `tests/ui/label-layout.test.ts`.
+- `npm test`: 19 server test files / 182 tests pass; UI smoke 140 tests pass, 0 fail.
+- `npm run build`: Next compiled successfully and standalone output prepared. Existing Vite checkout-demo chunk-size warning (>500 kB) remains.
+- Route smoke: 30 page/API route patterns. All 7 page routes returned 200. No API route returned 500; GET-only method mismatches returned 405, and configuration-dependent APIs returned 503 as expected without backend environment/wallet configuration. Config routes returned 200.
+- Headless screens outside Git: `/tmp/shots/opportunities-1440x900.png` and `/tmp/shots/briefs-1440x900.png` refreshed after final budget/title/footer cleanup; `/tmp/shots/city-390x844-final.png` refreshed after the responsive HUD change; `/tmp/shots/city-1440x900.png` is from the earlier visual pass. Earlier 390px dashboard images predate the final removal of the display-only currency label and should not be treated as final evidence.

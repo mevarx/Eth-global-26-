@@ -75,3 +75,11 @@ and unverified checks are listed in the audit document, not claimed complete.
 ## Phase 5 / final checkpoint
 SA-7 read-only review: pending final check. Final static checks, production build, route smoke, screenshots,
 reviewer failures and manually outstanding wallet/device work are to be added here before handoff.
+
+## Final local verification (Phase 4)
+- Lint: 0 errors, 2 warnings only in the unrendered copied dashboard reference. Typecheck and strict noUnused check pass.
+- Tests: 19 server files / 182 tests; UI smoke 140 tests, all pass.
+- Production build compiled, prepared standalone assets; existing demo Vite chunk warning remains.
+- Smoke-tested 30 route patterns: all 7 pages 200; API GET 200, expected 405 or config-dependent 503; no 500.
+- Screenshots outside Git: current dashboard desktop and mobile city screenshot locations/evidence details are in docs/ui-audit.md. Browser renders the dashboard shader only on dashboard routes; previous DOM probe reported city backdrop canvas 0 and dashboard backdrop 1.
+- SA-7 independent review is still running; update this checkpoint with its actual report before final handoff.
