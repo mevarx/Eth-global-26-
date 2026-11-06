@@ -18,3 +18,6 @@
 .bm-dash-panel { border-radius: var(--bm-radius-lg); padding: var(--bm-space-5); }
 .bm-dash-panel > h1 { font-family: var(--bm-font-heading); font-size: var(--bm-text-page); font-weight: 600; letter-spacing: -0.01em; margin: 0 0 var(--bm-space-2); text-transform: none; }
 .bm-dash-panel > p { color: var(--bm-text-secondary); font-size: var(--bm-text-md); line-height: var(--bm-leading); max-width: 70ch; margin: 0; }
+
+/* The shared legacy footer mentions old checkout language; keep it off dashboard routes. */
+.bm-dashboard .statusbar { display: none; }
