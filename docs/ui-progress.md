@@ -1,6 +1,6 @@
 # UI polish progress (checkpoint)
 
-Phase: Phase 0 complete; Phase 1 (SA-8, SA-9, SA-1, SA-6) starting.
+Phase: Phase 3 (LEAD wiring) in progress. Phases 0-2 committed; dashboard wiring committed.
 Rollback tag: `pre-ui-polish` (33f3847).
 
 ## Former blocker (resolved 2026-11-06)
@@ -50,3 +50,13 @@ Next step: commit those files under `docs/` (and the PRD), then resume at Phase 
 
 ## Next
 Phase 1 subagents, then Phase 2, Phase 3 wiring, Phase 4 audit, Phase 5 review, Phase 6 report.
+
+## Phase 1-2 results (committed, one commit each)
+SA-8 tokens/fonts, SA-9 shader+backdrop+contrast (dashboard text glass floor 0.76), SA-6 Opportunities page,
+SA-1 glass panel/provider (city floor raised 0.35 -> 0.63 vs white walls), SA-2 labels, SA-3 districts,
+SA-4 explainers (owner wording only), SA-5 boats, SA-10 ambient life, SA-11 scenery.
+Deviation: Phase 2 started in parallel with Phase 1 (only depended on Phase 0 contracts).
+
+## Phase 3 remaining
+City wiring: engine removals (plates/tags, boats, fillers, coastal palms), CityScene overlay stack + camera
+store + ticker + labels + glass HUD, page.tsx -> BriefMintGlassPanel. Then smoke test + screenshots.
