@@ -6,6 +6,10 @@
 import { useState } from "react";
 import { readOpportunitiesIndependent, readOpportunityIndependent, RABDI_PUBLIC_RPC } from "@/lib/arkiv/opportunities-independent";
 import type { Hex, OpportunityView } from "@/lib/shared/briefmint";
+import { ChevronDown, CircleAlert, Terminal } from "lucide-react";
+import { OpportunityStatusChip } from "@/components/opportunities/OpportunityCard";
+import { StatusChip } from "@/components/opportunities/StatusChip";
+import "@/components/opportunities/opportunities.css";
 
 export default function OpportunityReader() {
   const [accessKey, setAccessKey] = useState("");
@@ -58,33 +62,59 @@ export default function OpportunityReader() {
   };
 
   return (
-    <div className="card">
-      <h3>Independent Arkiv reader (no backend needed)</h3>
-      <p className="tc-muted">Queries indexed public records directly. No wallet, no session, no private data. RPC: {RABDI_PUBLIC_RPC}</p>
-      <div className="form-field">
-        <label htmlFor="reader-key">Arkiv access key (public rate-limit key; never committed)</label>
-        <input id="reader-key" type="text" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} disabled={busy} autoComplete="off" placeholder="Paste operator-provided key" />
+    <details className="opp-reader bm-glass bm-glass--text">
+      <summary className="opp-reader__summary">
+        <Terminal size={16} aria-hidden="true" />
+        <span>Developer: independent reader (no backend needed)</span>
+        <ChevronDown size={16} aria-hidden="true" className="opp-reader__chevron" />
+      </summary>
+      <div className="opp-reader__body">
+        <p className="bm-secondary bm-measure">
+          Why it exists: it proves public data can be read straight from Arkiv, without the BriefMint API or a wallet session.
+          No private data is involved.
+        </p>
+        <p className="bm-muted">RPC: <span className="bm-mono">{RABDI_PUBLIC_RPC}</span></p>
+        <div className="opp-field">
+          <label htmlFor="reader-key">Arkiv access key (public rate-limit key; never committed)</label>
+          <input id="reader-key" type="password" className="bm-input" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} disabled={busy} autoComplete="off" placeholder="Paste operator-provided key" />
+          <p className="bm-muted">Held in this page&apos;s memory only: never logged, stored or committed.</p>
+        </div>
+        <div className="opp-reader__row">
+          <div className="opp-field">
+            <label htmlFor="reader-category">Category</label>
+            <select id="reader-category" className="bm-input" value={category} onChange={(e) => setCategory(e.target.value as "writing" | "design" | "all")} disabled={busy}><option value="all">All</option><option value="writing">Writing</option><option value="design">Design</option></select>
+          </div>
+          <div className="opp-field">
+            <label htmlFor="reader-status">Status</label>
+            <select id="reader-status" className="bm-input" value={status} onChange={(e) => setStatus(e.target.value as "open" | "closed" | "all")} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="all">All</option></select>
+          </div>
+          <button type="button" className="bm-btn bm-btn--primary" onClick={read} disabled={busy}>{busy ? "Reading…" : "Read opportunities"}</button>
+        </div>
+        {error && <p className="opp-note opp-note--danger" role="alert"><CircleAlert size={16} aria-hidden="true" />{error}</p>}
+        {rows && <p className="bm-secondary" role="status">{rows.length === 0 ? "No public records returned (empty catalogue)." : `${rows.length} public record(s) returned.`}</p>}
+        {rows && rows.length > 0 && (
+          <ul className="opp-reader__list">
+            {rows.map((o) => (
+              <li key={o.entityKey}>
+                <div className="opp-card__chips">
+                  <StatusChip tone="info">{o.category === "design" ? "Design" : "Writing"}</StatusChip>
+                  <OpportunityStatusChip opportunity={o} />
+                </div>
+                <strong>{o.title}</strong>
+                <span className="bm-mono bm-muted">{o.entityKey} · r{o.revision}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="opp-field">
+          <label htmlFor="reader-entity">Single entity key</label>
+          <input id="reader-entity" type="text" className="bm-input bm-mono" value={entityKey} onChange={(e) => setEntityKey(e.target.value)} disabled={busy} placeholder="0x…" />
+        </div>
+        <div>
+          <button type="button" className="bm-btn" onClick={readOne} disabled={busy}>Read single record</button>
+        </div>
+        {single && <p className="opp-note opp-note--info" role="status">Found: {single.title} ({single.status}, r{single.revision}), owner <span className="bm-mono">{single.ownerAddress}</span>.</p>}
       </div>
-      <div className="btn-row">
-        <label>Category <select value={category} onChange={(e) => setCategory(e.target.value as "writing" | "design" | "all")} disabled={busy}><option value="all">All</option><option value="writing">Writing</option><option value="design">Design</option></select></label>
-        <label>Status <select value={status} onChange={(e) => setStatus(e.target.value as "open" | "closed" | "all")} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="all">All</option></select></label>
-        <button type="button" className="btn btn-primary" onClick={read} disabled={busy}>{busy ? "Reading…" : "Read opportunities"}</button>
-      </div>
-      {error && <p className="error" role="alert">{error}</p>}
-      {rows && <p className="tc-muted" role="status">{rows.length === 0 ? "No public records returned (empty catalogue)." : `${rows.length} public record(s) returned.`}</p>}
-      {rows && rows.length > 0 && (
-        <ul className="job-list">
-          {rows.map((o) => (
-            <li key={o.entityKey}><span className="badge">{o.category}</span> <span className="badge">{o.status}</span> <strong>{o.title}</strong><br /><span className="tc-mono tc-muted">{o.entityKey} · r{o.revision}</span></li>
-          ))}
-        </ul>
-      )}
-      <div className="form-field">
-        <label htmlFor="reader-entity">Single entity key</label>
-        <input id="reader-entity" type="text" value={entityKey} onChange={(e) => setEntityKey(e.target.value)} disabled={busy} placeholder="0x…" />
-      </div>
-      <button type="button" className="btn" onClick={readOne} disabled={busy}>Read single record</button>
-      {single && <p className="notice">Found: {single.title} ({single.status}, r{single.revision}), owner <span className="tc-mono">{single.ownerAddress}</span>.</p>}
-    </div>
+    </details>
   );
 }
