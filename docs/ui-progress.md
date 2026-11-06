@@ -83,3 +83,13 @@ reviewer failures and manually outstanding wallet/device work are to be added he
 - Smoke-tested 30 route patterns: all 7 pages 200; API GET 200, expected 405 or config-dependent 503; no 500.
 - Screenshots outside Git: current dashboard desktop and mobile city screenshot locations/evidence details are in docs/ui-audit.md. Browser renders the dashboard shader only on dashboard routes; previous DOM probe reported city backdrop canvas 0 and dashboard backdrop 1.
 - SA-7 independent review is still running; update this checkpoint with its actual report before final handoff.
+
+## Phase 5 reviewer result / final status
+SA-7 completed read-only review. Lint (0 errors, 2 warnings), typecheck, 19 server files/182 tests,
+140 UI tests and production build all pass in the review. PASS items: route-specific shader wiring,
+contrast helper checks, water snap/source behavior, keyboard/reduced-motion implementation, no CityPanel
+imports, and CRLF join fix. PARTIAL: label road avoidance is soft; ambient-v-label overlap, browser interaction,
+font fallback and shader failure modes were not exercised. FAIL: Phase3 commit `42f47bb` combines wiring with
+scene removals rather than a cleanup-only commit; history was not rewritten due the no-rewrite rule. See
+`docs/ui-audit.md` and reviewer lines/paths in this checkpoint for limitations and manual wallet/device steps.
+The PRD file and attribution license remain unverified. Dev server stopped after route smoke and screenshots.
