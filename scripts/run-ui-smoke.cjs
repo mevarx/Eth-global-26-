@@ -12,6 +12,8 @@ const out = path.join(tmp, "build");
 const tsc = path.join(root, "node_modules", "typescript", "bin", "tsc");
 const tsconfigPath = path.join(tmp, "tsconfig.smoke.json");
 
+const uiTests = fs.readdirSync(path.join(root, "tests/ui")).filter((f) => f.endsWith(".test.ts")).sort();
+
 const tsconfig = {
   compilerOptions: {
     target: "es2022",
@@ -27,9 +29,9 @@ const tsconfig = {
     typeRoots: [path.join(root, "node_modules", "@types")],
     paths: { "@/*": ["src/*"] },
   },
+  // Every tests/ui/*.test.ts is a root; tsc follows their relative and @/ imports.
   include: [
-    path.join(root, "tests/ui/smoke.test.ts"),
-    path.join(root, "tests/ui/briefmint.test.ts"),
+    ...uiTests.map((f) => path.join(root, "tests/ui", f)),
     path.join(root, "src/lib/shared/validation.ts"),
     path.join(root, "src/lib/shared/fixtures.ts"),
     path.join(root, "src/lib/shared/domain.ts"),
@@ -43,7 +45,8 @@ const tsconfig = {
 fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig));
 
 execSync(`node "${tsc}" -p "${tsconfigPath}"`, { cwd: root, stdio: "inherit" });
-execSync(`node --test "${path.join(out, "tests", "ui", "smoke.test.js")}" "${path.join(out, "tests", "ui", "briefmint.test.js")}"`, {
+const compiled = uiTests.map((f) => `"${path.join(out, "tests", "ui", f.replace(/\.ts$/, ".js"))}"`).join(" ");
+execSync(`node --test ${compiled}`, {
   cwd: root,
   stdio: "inherit",
   env: { ...process.env, NODE_PATH: path.join(root, "node_modules") },

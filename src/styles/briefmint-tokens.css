@@ -1,0 +1,237 @@
+/* BriefMint design tokens and shared component classes. Docs: docs/design-system.md */
+:root {
+  /* Surfaces and lines */
+  --bm-bg-0: #060f1a;
+  --bm-bg-1: #0b1b2e;
+  --bm-bg-2: #10263d;
+  --bm-line: rgba(169, 187, 207, 0.22);
+  --bm-line-strong: #6f87a1; /* >= 3:1 on bg-0/1/2: input, ghost button and icon outlines */
+
+  /* Text */
+  --bm-text-primary: #f1f5f9;
+  --bm-text-secondary: #b4c3d4;
+  --bm-text-muted: #93a6bb; /* large or non-essential text only */
+
+  /* Accent and status */
+  --bm-accent: #f5b02e;
+  --bm-accent-hover: #f8c155;
+  --bm-on-accent: #0b1b2e;
+  --bm-teal: #2dd4bf;
+  --bm-success: #4ade80;
+  --bm-warning: #fbbf24;
+  --bm-danger: #f87171;
+  --bm-info: #60a5fa;
+
+  /* Fonts (next/font variables set on <html> by src/lib/ui/fonts.ts) */
+  --bm-font-body: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --bm-font-heading: var(--font-space-grotesk), var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bm-font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Type scale: nothing below --bm-text-xs anywhere */
+  --bm-text-xs: 12px;
+  --bm-text-sm: 13px;
+  --bm-text-md: 15px;
+  --bm-text-lg: 17px;
+  --bm-text-page: 32px;
+  --bm-leading: 1.55;
+  --bm-tag-tracking: 0.08em;
+
+  /* Spacing, radii, touch */
+  --bm-space-1: 4px;
+  --bm-space-2: 8px;
+  --bm-space-3: 12px;
+  --bm-space-4: 16px;
+  --bm-space-5: 24px;
+  --bm-space-6: 32px;
+  --bm-radius-sm: 8px;
+  --bm-radius-md: 12px;
+  --bm-radius-lg: 16px;
+  --bm-touch: 40px;
+
+  /* Focus */
+  --bm-focus-ring: 2px solid var(--bm-accent);
+  --bm-focus-offset: 2px;
+
+  /* Chips: solid tone tint over bg-1 so contrast is predictable */
+  --bm-chip-ok-bg: color-mix(in srgb, var(--bm-success) 16%, var(--bm-bg-1));
+  --bm-chip-warn-bg: color-mix(in srgb, var(--bm-warning) 16%, var(--bm-bg-1));
+  --bm-chip-danger-bg: color-mix(in srgb, var(--bm-danger) 16%, var(--bm-bg-1));
+  --bm-chip-info-bg: color-mix(in srgb, var(--bm-info) 16%, var(--bm-bg-1));
+  --bm-chip-muted-bg: color-mix(in srgb, var(--bm-text-muted) 16%, var(--bm-bg-1));
+
+  /* Glass defaults (reference "Frosted"); the GlassProvider overrides via --gw-* */
+  --bm-glass-blur: 22px;
+  --bm-glass-opacity: 0.3;
+  --bm-glass-saturation: 1.2;
+  --bm-glass-edge: 0.6;
+  --bm-glass-surface: var(--bm-bg-1);
+  --bm-glass-tint: #7aa7d6;
+  --bm-glass-highlight: #ffffff;
+  --bm-glass-shadow: rgba(2, 8, 16, 0.55);
+  --bm-glass-fallback: rgba(11, 27, 46, 0.94);
+  --bm-glass-underlay: rgba(11, 27, 46, 0.35);
+  --bm-glass-min-text-opacity: 0.55; /* dashboard floor; the city floor (0.35) is applied by the city HUD */
+
+  /* Dashboard sky (cloud shader colors) */
+  --bm-sky-top: #1f5fa8;
+  --bm-sky-bottom: #7ec0ee;
+  --bm-cloud: #f4f7fb;
+  --bm-scrim: rgba(6, 15, 26, 0.38);
+
+  /* Scene palette for overlay SVG art, matched to the Pixi island */
+  --bm-scene-grass: #7fc35f;
+  --bm-scene-grass-dark: #5fa04a;
+  --bm-scene-sand: #e9e2d0;
+  --bm-scene-sand-dark: #dcd3bd;
+  --bm-scene-water: #3a8fcc;
+  --bm-scene-water-deep: #1f6fa8;
+  --bm-scene-foliage: #2f8a57;
+  --bm-scene-foliage-dark: #1d5a38;
+  --bm-scene-trunk: #6e3a22;
+  --bm-scene-wood: #9a6a43;
+  --bm-scene-wood-dark: #5c3a22;
+  --bm-scene-roof-red: #c9442f;
+  --bm-scene-roof-blue: #3f6fb5;
+  --bm-scene-wall-light: #f4f1e6;
+  --bm-scene-wall-shade: #d8d0bf;
+  --bm-scene-stone: #9a9a90;
+  --bm-scene-path: #d8b98a;
+  --bm-scene-window: #86add6;
+  --bm-scene-lamp-glow: #ffe48a;
+  --bm-scene-solar-panel: #1f4f7a;
+  --bm-scene-court: #c96f4a;
+  --bm-scene-crate: #b98a55;
+  --bm-scene-ink: #1b2a33;
+  --bm-scene-sign: #fdfbf3;
+  --bm-scene-sign-ink: #1b2a33;
+  --bm-scene-plate: #f4efe4;
+  --bm-scene-plate-edge: #5c564a;
+}
+
+/* ---- Glass: reference .gw-glass recipe, driven by --gw-* with --bm-glass-* fallbacks ---- */
+.bm-glass {
+  position: relative;
+  isolation: isolate;
+  background: color-mix(
+    in srgb,
+    var(--gw-surface, var(--bm-glass-surface)) calc(var(--gw-opacity, var(--bm-glass-opacity)) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
+  -webkit-backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
+  box-shadow:
+    inset 0 1px 0
+      color-mix(in srgb, var(--gw-highlight, var(--bm-glass-highlight)) calc(var(--gw-edge, var(--bm-glass-edge)) * 100%), transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--gw-highlight, var(--bm-glass-highlight)) calc(var(--gw-edge, var(--bm-glass-edge)) * 34%), transparent),
+    0 20px 52px -25px var(--gw-shadow, var(--bm-glass-shadow));
+  color: var(--bm-text-primary);
+}
+.bm-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--gw-tint, var(--bm-glass-tint));
+  opacity: 0.12;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.bm-glass--text {
+  background-image: linear-gradient(var(--bm-glass-underlay), var(--bm-glass-underlay));
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .bm-glass {
+    background: var(--gw-fallback, var(--bm-glass-fallback));
+  }
+}
+
+/* ---- Buttons ---- */
+.bm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bm-space-2);
+  min-height: var(--bm-touch);
+  padding: 0 var(--bm-space-4);
+  border: 1px solid var(--bm-line-strong);
+  border-radius: var(--bm-radius-sm);
+  background: var(--bm-bg-2);
+  color: var(--bm-text-primary);
+  font: 600 var(--bm-text-sm)/1.2 var(--bm-font-body);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.bm-btn:hover { background: color-mix(in srgb, var(--bm-text-primary) 8%, var(--bm-bg-2)); }
+.bm-btn--primary {
+  background: var(--bm-accent);
+  border-color: var(--bm-accent);
+  color: var(--bm-on-accent);
+}
+.bm-btn--primary:hover { background: var(--bm-accent-hover); border-color: var(--bm-accent-hover); }
+.bm-btn--ghost { background: transparent; }
+.bm-btn--ghost:hover { background: color-mix(in srgb, var(--bm-text-primary) 8%, transparent); }
+.bm-btn:disabled,
+.bm-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+
+/* ---- Chips: always pair text with an icon; never color alone ---- */
+.bm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--bm-chip-fg, var(--bm-text-secondary)) 45%, transparent);
+  border-radius: 999px;
+  background: var(--bm-chip-bg, var(--bm-chip-muted-bg));
+  color: var(--bm-chip-fg, var(--bm-text-secondary));
+  font: 600 var(--bm-text-xs)/1.3 var(--bm-font-body);
+  white-space: nowrap;
+}
+.bm-chip svg { flex: none; width: 14px; height: 14px; }
+.bm-chip--ok { --bm-chip-fg: var(--bm-success); --bm-chip-bg: var(--bm-chip-ok-bg); }
+.bm-chip--warn { --bm-chip-fg: var(--bm-warning); --bm-chip-bg: var(--bm-chip-warn-bg); }
+.bm-chip--danger { --bm-chip-fg: var(--bm-danger); --bm-chip-bg: var(--bm-chip-danger-bg); }
+.bm-chip--info { --bm-chip-fg: var(--bm-info); --bm-chip-bg: var(--bm-chip-info-bg); }
+.bm-chip--muted { --bm-chip-fg: var(--bm-text-secondary); --bm-chip-bg: var(--bm-chip-muted-bg); }
+
+/* ---- Input ---- */
+.bm-input {
+  display: block;
+  width: 100%;
+  min-height: var(--bm-touch);
+  padding: var(--bm-space-2) var(--bm-space-3);
+  border: 1px solid var(--bm-line-strong);
+  border-radius: var(--bm-radius-sm);
+  background: var(--bm-bg-0);
+  color: var(--bm-text-primary);
+  font: 400 var(--bm-text-md)/var(--bm-leading) var(--bm-font-body);
+}
+.bm-input::placeholder { color: var(--bm-text-muted); opacity: 1; }
+.bm-input:hover { border-color: var(--bm-text-muted); }
+.bm-input[aria-invalid="true"] { border-color: var(--bm-danger); }
+.bm-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---- Card ---- */
+.bm-card {
+  padding: var(--bm-space-4);
+  border: 1px solid var(--bm-line);
+  border-radius: var(--bm-radius-md);
+  background: var(--bm-bg-1);
+  color: var(--bm-text-primary);
+}
+.bm-card--selected { border-color: var(--bm-accent); }
+
+/* ---- Visible keyboard focus: 2px amber ring, 2px offset ---- */
+.bm-btn:focus-visible,
+.bm-input:focus-visible,
+.bm-card:focus-visible,
+.bm-focusable:focus-visible {
+  outline: var(--bm-focus-ring);
+  outline-offset: var(--bm-focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-btn { transition: none; }
+}

@@ -13,7 +13,6 @@ import {
   PLAZA_BLOCK,
   ROAD_LINES,
   SAND_RING,
-  TILE_W,
   blockOrigin,
   doorFor,
   isRoadCell,
@@ -22,7 +21,6 @@ import {
   toWorld,
   type GridPt,
 } from "../iso-layout";
-import type { BuildingTag } from "../scene-labels";
 import { BUILDINGS, type BuildingDef, type BuildingId } from "../scene-config";
 import { easeInOut } from "../walk-path";
 
@@ -33,7 +31,7 @@ export interface CameraState {
   z: number;
 }
 
-const FONT = "'Space Mono', ui-monospace, monospace";
+const FONT = "system-ui, sans-serif";
 const INK = 0x1b2a33;
 const TAU = Math.PI * 2;
 const WATER = 0x3a8fcc;
@@ -42,13 +40,6 @@ const POP_MS = 420;
 const STAMP_MS = 520;
 const WALK_PX_PER_S = 95;
 const BOUNDS = { minX: -GRID_N * 20 - 40, maxX: GRID_N * 20 + 40, minY: -140, maxY: GRID_N * 20 + 40 };
-
-const TAG_COLORS: Record<BuildingTag["tone"], string> = {
-  info: "#1f4f7a",
-  ok: "#1d5a38",
-  warn: "#6b3d00",
-  muted: "#3d3a34",
-};
 
 function shade(color: string | number, f: number): number {
   const n = typeof color === "number" ? color : parseInt(color.slice(1), 16);
@@ -161,12 +152,6 @@ interface BuildingView {
   door: Graphics;
   decor: Container;
   under: Container;
-  plate: Container;
-  plateBg: Graphics;
-  plateText: Text;
-  tag: Container;
-  tagBg: Graphics;
-  tagText: Text;
   hover: number;
   press: number;
   doorStart: number | null;
@@ -242,7 +227,6 @@ export class CityEngine {
   private clouds: Array<{ g: Graphics; speed: number; off: number; y: number }> = [];
   private birds!: Container;
   private birdWings: Graphics[] = [];
-  private boats: Array<{ c: Container; a: Pt; b: Pt; period: number; off: number }> = [];
   private beam!: Graphics;
   private selRing = new Graphics();
   private quest = new Container();
@@ -273,7 +257,6 @@ export class CityEngine {
   }
 
   static async create(host: HTMLElement, opts: { onCamera?: (c: CameraState) => void; reservedWidth?: () => number } = {}): Promise<CityEngine> {
-    await document.fonts?.load("700 12px 'Space Mono'").catch(() => undefined);
     const app = new Application();
     await app.init({
       resizeTo: host,
@@ -453,7 +436,7 @@ export class CityEngine {
     }
   }
 
-  setState(city: CityState, tags: Record<BuildingId, BuildingTag | null>) {
+  setState(city: CityState) {
     const prev = this.city;
     this.city = city;
     const animate = this.mode === "on";
@@ -488,7 +471,6 @@ export class CityEngine {
     if (animate && prev && prev.briefId === null && city.briefId !== null) this.boxesStart = this.t;
     if (!animate) this.stampStart = this.stampOutStart = this.scanStart = this.boxesStart = -1e9;
 
-    for (const v of this.views.values()) this.drawTag(v, tags[v.def.id]);
     this.buildDecor(city);
     this.drawWorkerProps(city);
     this.drawQuest(city.quest);
@@ -499,7 +481,6 @@ export class CityEngine {
     if (id === this.selected) return;
     this.selected = id;
     this.selStart = this.mode === "on" ? this.t : -1e9;
-    for (const v of this.views.values()) this.drawPlate(v, v.def.id === id);
     this.renderStatic();
   }
 
@@ -529,7 +510,6 @@ export class CityEngine {
     this.buildSea();
     this.buildIsland();
     this.buildPlaza();
-    this.buildFillers();
     this.buildTreesAndLamps();
     BUILDINGS.forEach((b, i) => this.buildKeyBuilding(keyBuildingDef(b.id), i));
     this.buildWorker();
@@ -642,85 +622,6 @@ export class CityEngine {
     this.depth.addChild(f);
   }
 
-  private buildFillers() {
-    const r = seeded(31);
-    const keyBlocks = new Set(Object.values(KEY_BLOCKS).map((b) => `${b.bx},${b.by}`));
-    for (let bx = 0; bx < 3; bx++)
-      for (let by = 0; by < 3; by++) {
-        if (keyBlocks.has(`${bx},${by}`) || (bx === PLAZA_BLOCK.bx && by === PLAZA_BLOCK.by)) continue;
-        const o = blockOrigin(bx, by);
-        for (let px = 0; px < 3; px++)
-          for (let py = 0; py < 3; py++) {
-            const gx = o.gx + px * 2;
-            const gy = o.gy + py * 2;
-            const v = r();
-            if (v < 0.5) this.addTower(gx, gy, 2, 40 + Math.floor(r() * 80), r);
-            else if (v < 0.82) this.addHouse(gx, gy, 2, r);
-            else this.addTree(toWorld({ gx: gx + 1, gy: gy + 1 }), 0.9 + r() * 0.3, r() * TAU);
-          }
-      }
-    // outer ring between the coast and the first road: low houses
-    for (let k = 5; k < GRID_N - 5; k += 3) {
-      if (r() < 0.55) this.addHouse(2, k, 2, r);
-      if (r() < 0.55) this.addHouse(k, 2, 2, r);
-    }
-  }
-
-  private addTower(gx: number, gy: number, size: number, h: number, r: () => number) {
-    const c = toWorld({ gx: gx + size / 2, gy: gy + size / 2 });
-    const def = { cx: c.x, cy: c.y, hw: (size * TILE_W) / 2 - 6, wallH: h, roof: "flat" as const } as BuildingDef;
-    const g0 = isoGeometry({ ...def, roofColor: "#000", id: "home", name: "", description: "", waypoint: { x: 0, y: 0 } });
-    const { L, B, R, Lt, Bt, Rt, Tt } = g0;
-    const g = new Graphics();
-    g.ellipse(c.x, c.y + 4, def.hw, def.hw * 0.5).fill({ color: 0x000000, alpha: 0.14 });
-    g.poly([L, B, Bt, Lt]).fill(0xf2f5f8).stroke({ width: 1.5, color: INK, alpha: 0.85 });
-    g.poly([R, B, Bt, Rt]).fill(0xc9d4e0).stroke({ width: 1.5, color: INK, alpha: 0.85 });
-    const band = (a: Pt, b: Pt, y: number, col: number) =>
-      g.poly([{ x: a.x, y: a.y - y }, { x: b.x, y: b.y - y }, { x: b.x, y: b.y - y - 4 }, { x: a.x, y: a.y - y - 4 }]).fill(col);
-    band(L, B, 3, 0x2f5d9f);
-    band(B, R, 3, 0x244a80);
-    for (let y = 14; y < h - 6; y += 11) {
-      for (const [a, b, col] of [
-        [L, B, 0x9cc3ea],
-        [B, R, 0x86add6],
-      ] as const) {
-        for (const t of [0.18, 0.42, 0.66]) {
-          const w = winPts(a, b, t, t + 0.14, y, 6);
-          g.poly(w).fill(col);
-        }
-      }
-    }
-    const lift = (p: Pt) => ({ x: p.x, y: p.y - 4 });
-    const roofCol = r() < 0.75 ? 0x3f6fb5 : 0x5c6b7a;
-    g.poly([Lt, Bt, lift(Bt), lift(Lt)]).fill(shade(roofCol, 0.85));
-    g.poly([Bt, Rt, lift(Rt), lift(Bt)]).fill(shade(roofCol, 0.7));
-    g.poly([lift(Lt), lift(Tt), lift(Rt), lift(Bt)]).fill(roofCol).stroke({ width: 1.5, color: INK, alpha: 0.85 });
-    g.poly(inset([lift(Lt), lift(Tt), lift(Rt), lift(Bt)], 0.3)).fill(shade(roofCol, 1.2));
-    g.zIndex = c.y;
-    this.depth.addChild(g);
-  }
-
-  private addHouse(gx: number, gy: number, size: number, r: () => number) {
-    const c = toWorld({ gx: gx + size / 2, gy: gy + size / 2 });
-    const hw = (size * TILE_W) / 2 - 10;
-    const wallH = 18 + Math.floor(r() * 8);
-    const geo = isoGeometry({ cx: c.x, cy: c.y, hw, wallH, roof: "hip", roofColor: "#000", id: "home", name: "", description: "", waypoint: { x: 0, y: 0 } });
-    const { L, B, R, Lt, Bt, Rt, apex } = geo;
-    const roofCol = r() < 0.6 ? 0x3f6fb5 : r() < 0.5 ? 0xc96f4a : 0x5a8f4e;
-    const g = new Graphics();
-    g.ellipse(c.x, c.y + 3, hw, hw * 0.5).fill({ color: 0x000000, alpha: 0.14 });
-    g.poly([L, B, Bt, Lt]).fill(0xf4efe4).stroke({ width: 1.4, color: INK, alpha: 0.85 });
-    g.poly([R, B, Bt, Rt]).fill(0xd8d0bf).stroke({ width: 1.4, color: INK, alpha: 0.85 });
-    g.poly(winPts(L, B, 0.3, 0.55, wallH * 0.3, 7)).fill(0x86add6);
-    g.poly(winPts(B, R, 0.45, 0.7, wallH * 0.3, 7)).fill(0x7aa0c8);
-    const o = (p: Pt) => ({ x: c.x + (p.x - c.x) * 1.1, y: c.y - wallH + (p.y - c.y + wallH) * 1.1 + 1 });
-    const a = { x: apex.x, y: apex.y + 6 };
-    g.poly([a, o(Lt), o(Bt)]).fill(roofCol).stroke({ width: 1.4, color: INK, alpha: 0.85, join: "round" });
-    g.poly([a, o(Bt), o(Rt)]).fill(shade(roofCol, 0.8)).stroke({ width: 1.4, color: INK, alpha: 0.85, join: "round" });
-    g.zIndex = c.y;
-    this.depth.addChild(g);
-  }
-
   private addTree(p: Pt, s: number, phase: number) {
     const c = new Container();
     c.position.set(p.x, p.y);
@@ -762,15 +663,6 @@ export class CityEngine {
       [5, 5],
     ])
       this.addTree(toWorld({ gx: po.gx + x + 0.5, gy: po.gy + y + 0.5 }), 1, r() * TAU);
-    // coastal palms/trees on grass near sand
-    for (let k = 0; k < 26; k++) {
-      const edge = r() < 0.5;
-      const gx = edge ? 2 + r() * 1.6 : 3 + r() * (GRID_N - 6);
-      const gy = edge ? 3 + r() * (GRID_N - 6) : 2 + r() * 1.6;
-      const [x, y] = r() < 0.5 ? [gx, gy] : [GRID_N - gx, GRID_N - gy];
-      if (isRoadCell(Math.floor(x), Math.floor(y))) continue;
-      this.addTree(toWorld({ gx: x, gy: y }), 0.8 + r() * 0.3, r() * TAU);
-    }
     // street lamps at intersections around the plaza
     const lines = ROAD_LINES as readonly number[];
     for (const [a, b] of [
@@ -903,19 +795,6 @@ export class CityEngine {
     root.addChild(shadow, under, body);
     this.depth.addChild(root);
 
-    const plate = new Container();
-    plate.position.set(cx, Math.min(apex.y, Tt.y - 7) - 48);
-    const plateBg = new Graphics();
-    const plateText = label(def.name.toUpperCase(), 14, "#e9eef2", "700", false);
-    plate.addChild(plateBg, plateText);
-    const tag = new Container();
-    tag.position.set(cx, cy + hh + 36);
-    const tagBg = new Graphics();
-    const tagText = label("", 10, TAG_COLORS.info, "700", false);
-    tag.addChild(tagBg, tagText);
-    tag.visible = false;
-    this.ui.addChild(plate, tag);
-
     const v: BuildingView = {
       def,
       geo,
@@ -927,43 +806,11 @@ export class CityEngine {
       door,
       decor,
       under,
-      plate,
-      plateBg,
-      plateText,
-      tag,
-      tagBg,
-      tagText,
       hover: 0,
       press: 0,
       doorStart: null,
     };
-    this.drawPlate(v, false);
     this.views.set(def.id, v);
-  }
-
-  private drawPlate(v: BuildingView, selected: boolean) {
-    const w = v.plateText.width + 20;
-    v.plateBg.clear();
-    v.plateBg.rect(-w / 2 + 2, -10, w, 26).fill({ color: 0x000000, alpha: 0.25 });
-    v.plateBg
-      .rect(-w / 2, -13, w, 26)
-      .fill(selected ? 0xf0a92b : 0x14212b)
-      .stroke({ width: 1.5, color: selected ? 0xffd27a : 0x3a5566 });
-    v.plateText.style.fill = selected ? "#111a20" : "#e9eef2";
-    v.plateText.y = -1;
-  }
-
-  private drawTag(v: BuildingView, tag: BuildingTag | null) {
-    v.tag.visible = tag !== null;
-    if (!tag) return;
-    v.tagText.text = tag.text.toUpperCase();
-    v.tagText.style.fill = TAG_COLORS[tag.tone];
-    const w = v.tagText.width + 14;
-    const bg = { info: 0xe3eef9, ok: 0xe0f3e6, warn: 0xfdf1d8, muted: 0xeceae4 }[tag.tone];
-    const edge = { info: 0x1f4f7a, ok: 0x1d5a38, warn: 0xb06a00, muted: 0x77736a }[tag.tone];
-    v.tagBg.clear();
-    v.tagBg.rect(-w / 2, -9, w, 17).fill(bg).stroke({ width: 1.5, color: edge });
-    v.tagText.y = -1;
   }
 
   private buildSky() {
@@ -985,19 +832,6 @@ export class CityEngine {
       this.birds.addChild(b);
     }
     this.ui.addChild(this.birds);
-    const boat = (sail: number) => {
-      const c = new Container();
-      const g = new Graphics();
-      g.poly([{ x: -14, y: 0 }, { x: 14, y: 0 }, { x: 9, y: 6 }, { x: -9, y: 6 }]).fill(0x9a6a43).stroke({ width: 1.4, color: INK });
-      g.moveTo(0, 0).lineTo(0, -20).stroke({ width: 1.4, color: INK });
-      g.poly([{ x: 1, y: -19 }, { x: 12, y: -3 }, { x: 1, y: -3 }]).fill(sail).stroke({ width: 1, color: INK });
-      g.moveTo(-18, 7).lineTo(-26, 7).stroke({ width: 1.5, color: 0xffffff, alpha: 0.7 });
-      c.addChild(g);
-      this.ground.addChild(c);
-      return c;
-    };
-    this.boats.push({ c: boat(0xfaf6ec), a: { x: -900, y: 700 }, b: { x: 200, y: 1150 }, period: 80, off: 0.2 });
-    this.boats.push({ c: boat(0xf0a92b), a: { x: 1100, y: -120 }, b: { x: 300, y: -420 }, period: 95, off: 0.6 });
   }
 
   private buildWorker() {
@@ -1305,12 +1139,6 @@ export class CityEngine {
     this.birdWings.forEach((b, k) => {
       b.scale.y = anim ? 0.35 + 0.65 * Math.abs(Math.sin(t * 5 + k)) : 1;
     });
-    for (const b of this.boats) {
-      const f = anim ? loop(b.period, b.off) : b.off;
-      b.c.position.set(lerp(b.a.x, b.b.x, f), lerp(b.a.y, b.b.y, f) + wave(2.6, b.off) * 1.5);
-      b.c.scale.x = b.b.x < b.a.x ? -1 : 1;
-      b.c.rotation = wave(3.1, b.off) * 0.05;
-    }
 
     // C. building states
     const city = this.city;
@@ -1372,8 +1200,6 @@ export class CityEngine {
       v.body.y = v.geo.B.y - 5 * v.hover + (1 - pop) * 8;
       v.root.alpha = popF;
       v.shadow.scale.set(1 + 0.08 * v.hover);
-      v.plate.alpha = popF;
-      v.tag.alpha = popF;
       let open = 0;
       if (v.doorStart !== null) {
         const f = (now - v.doorStart) / DOOR_MS;
