@@ -1,0 +1,8 @@
+# FIX 5 root cause: with no browserslist configured, the CSS pipeline downgrades
+# `backdrop-filter` (the sticky top bar and glass blocks) to the `-webkit-`-only
+# form, which current Chromium ignores, so page content scrolls through the
+# bars unblurred. Pin modern targets so both forms survive.
+Chrome >= 100
+Edge >= 100
+Firefox >= 100
+Safari >= 15.4

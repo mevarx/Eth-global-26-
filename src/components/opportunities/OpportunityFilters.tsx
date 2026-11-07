@@ -1,10 +1,12 @@
 "use client";
 // Sticky filter bar: Category / Status / Budget segments, title/summary search, Reset and Refresh.
 // Same semantics as before: category and status are re-queried, budget and search filter client-side.
+// The search input is the shared SearchField (icon inside the field, 40px left pad).
 import { useId } from "react";
-import { RefreshCw, RotateCcw, Search } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import type { OpportunityFilters as Filters } from "../../lib/shared/briefmint";
 import { DEFAULT_FILTERS, isDefaultFilters } from "./opportunity-format";
+import SearchField from "@/components/dashboard/SearchField";
 import "./opportunities.css";
 
 interface Segment<T extends string> {
@@ -74,26 +76,19 @@ export default function OpportunityFilters(p: OpportunityFiltersProps) {
   const pristine = isDefaultFilters(f, p.query);
 
   return (
-    <section className="opp-filters bm-glass bm-glass--text" aria-label="Filter opportunities">
+    <div className="opp-filters-inner" aria-label="Filter opportunities">
       <div className="opp-filters__groups">
         <SegmentGroup legend="Category" name={`${uid}-category`} options={CATEGORY} value={f.category ?? "all"} onChange={(category) => set({ category })} />
         <SegmentGroup legend="Status" name={`${uid}-status`} options={STATUS} value={f.status ?? "open"} onChange={(status) => set({ status })} />
         <SegmentGroup legend="Budget" name={`${uid}-budget`} options={BUDGET} value={f.budget ?? "all"} onChange={(budget) => set({ budget })} />
       </div>
       <div className="opp-filters__row">
-        <div className="opp-search">
-          <label htmlFor={`${uid}-q`} className="bm-sr-only">Search title and summary</label>
-          <Search size={16} aria-hidden="true" className="opp-search__icon" />
-          <input
-            id={`${uid}-q`}
-            type="search"
-            className="bm-input opp-search__input"
-            value={p.query}
-            onChange={(e) => p.onQueryChange(e.target.value)}
-            placeholder="Search title and summary"
-            autoComplete="off"
-          />
-        </div>
+        <SearchField
+          label="Search title and summary"
+          placeholder="Search title and summary"
+          value={p.query}
+          onChange={p.onQueryChange}
+        />
         <button
           type="button"
           className="bm-btn bm-btn--ghost"
@@ -113,6 +108,6 @@ export default function OpportunityFilters(p: OpportunityFiltersProps) {
       <p className="opp-filters__count bm-muted" role="status" aria-live="polite">
         {p.loading ? "Querying Arkiv indexed records…" : `Showing ${p.shownCount} of ${p.totalCount} opportunities`}
       </p>
-    </section>
+    </div>
   );
 }

@@ -1,8 +1,12 @@
 "use client";
 // Props-only opportunity card (also reused by the city HUD).
 // All record text renders as plain text; contact links need a valid HTTPS URL.
+// FIX 4: dashboard cards are summary cards only — chips, 2-line title, 2-line
+// summary, budget, deadline, owner + entity key, "View details". A selected
+// card gets the amber outline only; expansion happens in the detail panel.
+// The compact variant (city HUD) keeps its previous structure.
 import { useEffect, useRef, useState } from "react";
-import { CircleAlert, CircleCheck, CircleDashed, ExternalLink, Clock, Copy, Check, Lock, LockOpen } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, Clock, Copy, Check, Lock, LockOpen } from "lucide-react";
 import type { OpportunityView } from "../../lib/shared/briefmint";
 import { StatusChip, type StatusTone } from "./StatusChip";
 import {
@@ -10,10 +14,8 @@ import {
   formatBudget,
   formatDeadline,
   formatRefresh,
-  safeHttpsUrl,
   shortAddress,
   shortKey,
-  urlHost,
   checksumAddress,
   type Freshness,
 } from "./opportunity-format";
@@ -90,27 +92,64 @@ export default function OpportunityCard({
 }: OpportunityCardProps) {
   const owner = shortAddress(o.ownerAddress);
   const ownerFull = checksumAddress(o.ownerAddress);
-  const contact = safeHttpsUrl(o.contactUrl);
+
+  const chips = (
+    <div className="opp-card__chips">
+      <StatusChip tone="info">{o.category === "design" ? "Design" : "Writing"}</StatusChip>
+      <OpportunityStatusChip opportunity={o} />
+      <FreshnessChip freshness={freshness} />
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <article className={`opp-card opp-card--compact bm-glass bm-glass--text${selected ? " opp-card--selected" : ""}`}>
+        {chips}
+
+        <h3 className="opp-card__title">
+          {onSelect ? (
+            <button type="button" className="opp-card__select" aria-pressed={selected} onClick={() => onSelect(o)}>
+              {o.title}
+            </button>
+          ) : (
+            o.title
+          )}
+        </h3>
+
+        {/* Compact variant previously showed no summary text. */}
+        <dl className="opp-card__facts">
+          <div>
+            <dt>Advertised budget (unfunded)</dt>
+            <dd><BudgetText cents={o.budgetUsdCents} /></dd>
+          </div>
+          <div>
+            <dt>Deadline</dt>
+            <dd className="bm-num">{formatDeadline(o.deadline)}</dd>
+          </div>
+          <div>
+            <dt>Entity key</dt>
+            <dd>
+              <span className="bm-mono" title={o.entityKey}>{shortKey(o.entityKey)}</span>
+              <CopyButton value={o.entityKey} label="entity key" />
+            </dd>
+          </div>
+        </dl>
+
+        <p className="opp-card__refreshed bm-muted">
+          {freshness === "unavailable" ? "Arkiv unavailable. " : ""}
+          {formatRefresh(lastRefreshedAt)}
+        </p>
+      </article>
+    );
+  }
 
   return (
-    <article className={`opp-card bm-glass bm-glass--text${selected ? " opp-card--selected" : ""}${compact ? " opp-card--compact" : ""}`}>
-      <div className="opp-card__chips">
-        <StatusChip tone="info">{o.category === "design" ? "Design" : "Writing"}</StatusChip>
-        <OpportunityStatusChip opportunity={o} />
-        <FreshnessChip freshness={freshness} />
-      </div>
+    <article className={`opp-card bm-glass bm-glass--text${selected ? " opp-card--selected" : ""}`} aria-label={o.title}>
+      {chips}
 
-      <h3 className="opp-card__title">
-        {onSelect ? (
-          <button type="button" className="opp-card__select" aria-pressed={selected} onClick={() => onSelect(o)}>
-            {o.title}
-          </button>
-        ) : (
-          o.title
-        )}
-      </h3>
+      <h3 className="opp-card__title opp-card__title--clamp">{o.title}</h3>
 
-      {!compact && <p className="opp-card__summary">{o.summary}</p>}
+      <p className="opp-card__summary opp-card__summary--clamp">{o.summary}</p>
 
       <dl className="opp-card__facts">
         <div>
@@ -141,24 +180,22 @@ export default function OpportunityCard({
             <CopyButton value={o.entityKey} label="entity key" />
           </dd>
         </div>
-        {contact && (
-          <div>
-            <dt>Contact</dt>
-            <dd>
-              <a className="opp-card__link" href={contact} target="_blank" rel="noopener noreferrer">
-                {urlHost(contact)}
-                <ExternalLink size={13} aria-hidden="true" />
-                <span className="bm-sr-only"> (opens in a new tab)</span>
-              </a>
-            </dd>
-          </div>
-        )}
       </dl>
 
-      <p className="opp-card__refreshed bm-muted">
-        {freshness === "unavailable" ? "Arkiv unavailable. " : ""}
-        {formatRefresh(lastRefreshedAt)}
-      </p>
+      <div className="opp-card__footer">
+        <p className="opp-card__refreshed bm-muted">
+          {freshness === "unavailable" ? "Arkiv unavailable. " : ""}
+          {formatRefresh(lastRefreshedAt)}
+        </p>
+        <button
+          type="button"
+          className="bm-btn opp-card__details-btn"
+          aria-pressed={selected}
+          onClick={() => onSelect?.(o)}
+        >
+          {selected ? "Hide details" : "View details"}
+        </button>
+      </div>
     </article>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 // My Briefs: owner-authenticated private summaries via the canonical BriefMint API.
 // 401 → login prompt. 503 → backend unavailable (honest, no fixtures).
+// FIX 4: same page system as the Opportunities route (PageShell + Blocks).
 import AppShell from "@/components/app/AppShell";
+import PageShell from "@/components/dashboard/PageShell";
+import Block from "@/components/dashboard/Block";
 import BriefList from "@/components/briefs/BriefList";
 import { isApiError } from "@/lib/client/briefmint-api";
 import { useBriefs } from "@/lib/client/use-briefs";
@@ -38,15 +41,19 @@ export default function BriefsPage() {
 
   return (
     <AppShell>
-      <div className="bm-dash-page">
-        <header className="bm-glass bm-glass--text bm-dash-panel">
-          <h1>My Briefs</h1>
-          <p>Owner-only. Reopening a brief loads saved content, never recompiles.</p>
-        </header>
-        <section className="bm-glass bm-glass--text bm-dash-panel" aria-label="Your briefs">
-          {body}
+      <PageShell>
+        <section className="bm-block bm-glass bm-glass--text opp-header" aria-label="My briefs">
+          <div className="bm-block__head bm-block__head--baseline">
+            <h1 className="opp-header__title">My briefs</h1>
+          </div>
+          <div className="bm-block__body">
+            <p className="bm-secondary">Owner-only. Reopening a brief loads saved content, never recompiles.</p>
+          </div>
         </section>
-      </div>
+        <Block title="Your briefs" ariaLabel="Your briefs">
+          {body}
+        </Block>
+      </PageShell>
     </AppShell>
   );
 }

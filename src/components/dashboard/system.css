@@ -1,0 +1,175 @@
+/* Dashboard page system (FIX 4/FIX 5): PageShell, Block, BlockGrid, SearchField.
+   Tokens come from briefmint-tokens.css (--bm-*, --nav-height, --z-*). */
+
+/* ---- FIX 5: non-city routes' top bar — solid navy underlay + blur + fixed 64px bar on wide screens ---- */
+/* Double class wins specificity over dashboard.css/globals.css without depending on bundle order. */
+.bm-dashboard .topbar.topbar {
+  height: var(--nav-height);
+  z-index: var(--z-hud);
+  background: color-mix(in srgb, var(--bm-bg-0) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  border-bottom: 1px solid var(--bm-line);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .bm-dashboard .topbar.topbar { background: color-mix(in srgb, var(--bm-bg-0) 100%, transparent); }
+}
+
+/* One row, one baseline: wordmark, nav links, Connect wallet button + its hint share the line. */
+.bm-dashboard .topbar-inner {
+  height: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--bm-space-4);
+  padding-block: 0;
+}
+.bm-dashboard .topbar-actions { margin-left: auto; flex: none; }
+.bm-dashboard .topbar-actions > * { margin: 0; }
+.bm-dashboard .wallet { flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: var(--bm-space-3); }
+.bm-dashboard .wallet-row { flex-wrap: nowrap; align-items: center; }
+.bm-dashboard .wallet-hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+@media (max-width: 699px) {
+  /* One row cannot fit on a phone; hide secondary text and keep the bar one notch tall. */
+  .bm-dashboard .topbar-inner { gap: var(--bm-space-2); }
+  .bm-dashboard .brand-sub, .bm-dashboard .wallet-hint { display: none; }
+  .bm-dashboard .nav-link { padding-inline: 0.4rem; }
+}
+
+/* ---- PageShell: one width, one rhythm on every dashboard route ---- */
+.bm-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--bm-space-5) 24px var(--bm-space-6);
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+.bm-page > * { min-width: 0; }
+/* In-page anchors never hide under the sticky bars. */
+.bm-page [id] { scroll-margin-top: calc(var(--opp-nav-h, var(--nav-height)) + 12px); }
+@media (max-width: 640px) {
+  .bm-page { padding-inline: 16px; padding-block-start: var(--bm-space-3); }
+}
+
+/* ---- Block: one glass card, one title row (sentence case), optional action area ---- */
+.bm-block.bm-block {
+  padding: 20px;
+  border-radius: 16px;
+  min-width: 0;
+  display: grid;
+  gap: var(--bm-space-3);
+  align-content: start;
+}
+.bm-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bm-space-2) var(--bm-space-3);
+  margin: 0;
+}
+.bm-block__head.bm-block__head--baseline { align-items: baseline; }
+.bm-block__title {
+  margin: 0;
+  font: 600 var(--bm-text-lg)/1.3 var(--bm-font-heading);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--bm-text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bm-block__action {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bm-space-2);
+}
+.bm-block__icon { flex: none; }
+.bm-block__body { min-width: 0; }
+.bm-block__body > :first-child { margin-top: 0; }
+.bm-block__body > :last-child { margin-bottom: 0; }
+.bm-block--tone-danger { box-shadow: inset 3px 0 0 var(--bm-danger), 0 20px 52px -25px var(--bm-glass-shadow); }
+.bm-block--tone-warn { box-shadow: inset 3px 0 0 var(--bm-warning), 0 20px 52px -25px var(--bm-glass-shadow); }
+.bm-block--tone-info { box-shadow: inset 3px 0 0 var(--bm-info), 0 20px 52px -25px var(--bm-glass-shadow); }
+
+/* Collapsible block (native disclosure; identical card surface) */
+details.bm-block > .bm-block__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--bm-space-2);
+  cursor: pointer;
+  list-style: none;
+  margin: 0 0 0;
+}
+details.bm-block > .bm-block__summary::-webkit-details-marker { display: none; }
+details.bm-block > .bm-block__summary:hover .bm-block__title { color: var(--bm-accent-hover); }
+.bm-block__chevron { margin-left: auto; flex: none; transition: transform 160ms ease; }
+details.bm-block[open] > .bm-block__summary .bm-block__chevron { transform: rotate(180deg); }
+
+/* ---- Sticky block (filter bar): solid navy underlay + blur, below the nav, above content ---- */
+.bm-block--sticky {
+  position: sticky;
+  top: var(--opp-nav-h, var(--nav-height));
+  z-index: var(--z-labels);
+  background: color-mix(in srgb, var(--bm-bg-0) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .bm-block--sticky { background: color-mix(in srgb, var(--bm-bg-0) 100%, transparent); }
+}
+/* The bundler's older browser targets downgrade a plain backdrop-filter
+   declaration to -webkit-only (no-op in current Chromium), so re-declare the
+   blur inside an explicit supports gate, which survives the transform. */
+@supports (backdrop-filter: blur(1px)) {
+  .bm-dashboard .topbar.topbar {
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  }
+  .bm-block--sticky {
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  }
+}
+
+/* ---- BlockGrid: equal width and height per row, no masonry quirks ---- */
+.bm-blockgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: stretch;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.bm-blockgrid > * { margin: 0; min-width: 0; display: flex; align-items: stretch; }
+.bm-blockgrid > * > * { flex: 1 1 auto; }
+
+/* ---- SearchField: icon inside the field, 40px left padding (never overlaps placeholder) ---- */
+.bm-searchfield { position: relative; flex: 1 1 260px; min-width: 0; }
+.bm-searchfield__icon {
+  position: absolute;
+  left: var(--bm-space-3);
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--bm-text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+input.bm-searchfield__input {
+  /* Specificity 0,2,0: beats .bm-input and the global input[type="search"] regardless of bundle order. */
+  padding-left: 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-block__chevron { transition: none; }
+}
+
+/* watched */
