@@ -1,4 +1,4 @@
-// Pure helpers for the BriefMint glass panel and glass settings (PRD §10 state model proxy:
+// Pure helpers for the BriefMint glass panel (PRD §10 state model proxy:
 // src/components/city/city-state.ts). No React, DOM, timers or I/O: unit-tested in tests/ui.
 // Runtime imports are relative so the node:test build can resolve them.
 import type {
@@ -331,93 +331,18 @@ export function recentBriefs(briefs: BriefSummary[], limit = 3): BriefSummary[] 
   return [...briefs].sort((a, b) => time(b.updatedAt) - time(a.updatedAt)).slice(0, Math.max(0, limit));
 }
 
-/* ------------------------------------------------------------------- glass */
-
-export interface GlassSettings {
-  blur: number;
-  opacity: number;
-  saturation: number;
-  tint: string;
-  edge: number;
-}
-export type GlassScope = "city" | "dashboard";
+/* ------------------------------------------------------------------ glass */
+/* The glass look is FIXED at the reference "Frosted" defaults. The adjustable
+ * settings provider is gone, so nothing reads any leftover viewer-preset
+ * localStorage key. The fixed values live in src/styles/briefmint-tokens.css
+ * (--bm-glass-*). Only the contrast mirrors stay here for the contrast tests. */
 
 /** Worst case behind a city panel: white walls and surf foam (SA-9 contrast check). */
 export const BRIGHTEST_SCENE_HEX = "#ffffff";
 /** Smallest city opacity keeping text-primary at 4.5:1 over the brightest scene color (shared helper, no underlay credit). */
 export const CITY_MIN_TEXT_GLASS_OPACITY = CITY_MIN_GLASS_OPACITY_FOR(TEXT_PRIMARY_HEX, BRIGHTEST_SCENE_HEX);
 export { DASHBOARD_MIN_TEXT_GLASS_OPACITY };
-export const GLASS_OPACITY_MAX = 0.9;
 /** Mirrors of the CSS recipe used by the contrast checks: `--bm-glass-underlay`, tint overlay and `.bmg-well`. */
 export const GLASS_UNDERLAY_ALPHA = 0.35;
 export const GLASS_TINT_ALPHA = 0.12;
 export const GLASS_WELL_ALPHA = 0.7;
-
-/** Reference "Frosted" values. Tint is the `--bm-glass-tint` token as hex (a color input needs hex); opacity sits above both text floors. */
-export const GLASS_DEFAULTS: GlassSettings = {
-  blur: 22,
-  opacity: 0.7,
-  saturation: 1.2,
-  tint: "#7aa7d6",
-  edge: 0.6,
-};
-
-export const minOpacityForScope = (scope: GlassScope): number =>
-  scope === "city" ? CITY_MIN_TEXT_GLASS_OPACITY : DASHBOARD_MIN_TEXT_GLASS_OPACITY;
-
-const bounded = (value: number, min: number, max: number, fallback: number) =>
-  Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
-
-/** Reference normalize(): blur 0..40, saturation 0.5..2, edge 0..1, hex tint; opacity floor is per scope. */
-export function normalizeGlass(v: Partial<GlassSettings> | null | undefined, minOpacity: number): GlassSettings {
-  const d = GLASS_DEFAULTS;
-  const s = v ?? {};
-  return {
-    blur: bounded(s.blur ?? d.blur, 0, 40, d.blur),
-    opacity: bounded(s.opacity ?? d.opacity, minOpacity, GLASS_OPACITY_MAX, Math.max(minOpacity, d.opacity)),
-    saturation: bounded(s.saturation ?? d.saturation, 0.5, 2, d.saturation),
-    edge: bounded(s.edge ?? d.edge, 0, 1, d.edge),
-    tint: typeof s.tint === "string" && /^#[0-9a-f]{6}$/i.test(s.tint) ? s.tint : d.tint,
-  };
-}
-
-export interface GlassPreset {
-  name: "Clear" | "Frosted" | "Solid";
-  value: Partial<GlassSettings>;
-}
-export function glassPresets(minOpacity: number): GlassPreset[] {
-  return [
-    { name: "Clear", value: { blur: 8, opacity: minOpacity, saturation: 1.1, edge: 0.8 } },
-    { name: "Frosted", value: { ...GLASS_DEFAULTS } },
-    { name: "Solid", value: { blur: 32, opacity: 0.86, saturation: 1, edge: 0.35 } },
-  ];
-}
-
-/** CSS custom properties written on the provider root (and on portalled popovers). */
-export function glassCssVars(s: GlassSettings): Record<string, string | number> {
-  return {
-    "--gw-blur": `${s.blur}px`,
-    "--gw-opacity": s.opacity,
-    "--gw-saturation": s.saturation,
-    "--gw-tint": s.tint,
-    "--gw-edge": s.edge,
-  };
-}
-
-/** Defensive parse of stored settings; unknown keys and wrong types are dropped. */
-export function parseStoredGlass(raw: string | null): Partial<GlassSettings> | null {
-  if (!raw) return null;
-  try {
-    const data: unknown = JSON.parse(raw);
-    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-    const o = data as Record<string, unknown>;
-    const out: Partial<GlassSettings> = {};
-    for (const k of ["blur", "opacity", "saturation", "edge"] as const) {
-      if (typeof o[k] === "number") out[k] = o[k];
-    }
-    if (typeof o.tint === "string") out.tint = o.tint;
-    return out;
-  } catch {
-    return null;
-  }
-}

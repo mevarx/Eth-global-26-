@@ -3,9 +3,9 @@
 .bm-dashboard .shell { background: transparent; }
 .bm-dashboard .topbar,
 .bm-dashboard .statusbar {
-  background: color-mix(in srgb, var(--bm-bg-1) calc(var(--gw-opacity, var(--bm-glass-min-text-opacity)) * 100%), transparent);
-  backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
-  -webkit-backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
+  background: color-mix(in srgb, var(--bm-bg-1) calc(var(--bm-glass-opacity) * 100%), transparent);
+  backdrop-filter: blur(var(--bm-glass-blur)) saturate(var(--bm-glass-saturation));
+  -webkit-backdrop-filter: blur(var(--bm-glass-blur)) saturate(var(--bm-glass-saturation));
   border-color: var(--bm-line);
   color: var(--bm-text-primary);
 }

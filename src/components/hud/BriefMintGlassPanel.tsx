@@ -45,7 +45,7 @@ import type {
   OpportunityFilters as Filters,
   OpportunityView,
 } from "@/lib/shared/briefmint";
-import { AdjustGlassControl } from "./glass-context";
+import { dispatchCityOverlay } from "./overlay-signal";
 import {
   PANEL_TABS,
   STAGE_STATE_LABEL,
@@ -212,6 +212,13 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
   const [notice, setNotice] = useState("");
   const [awaitingRefresh, setAwaitingRefresh] = useState(false);
   const [seenRefresh, setSeenRefresh] = useState(lastRefresh);
+  /** Latest close handler for the document-level Escape/focus-trap listener (kept fresh below). */
+  const collapseRef = useRef(() => {});
+  const collapse = () => {
+    if (variant === "panel") setExpanded(false);
+    onClose?.();
+    toggle.current?.focus();
+  };
 
   // A refresh the user asked for ends with a real timestamp: announce that, nothing invented.
   if (lastRefresh !== seenRefresh) {
@@ -231,6 +238,54 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
   useEffect(() => {
     if (mode === "overlay") toggle.current?.focus();
   }, [mode]);
+
+  // Stacking contract: tell the city scene while the dialog is open (scene + labels go inert),
+  // keep Tab focus inside the dialog, and close on Escape even when focus was lost to the body.
+  useEffect(() => {
+    dispatchCityOverlay(mode === "overlay");
+    return () => dispatchCityOverlay(false);
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "overlay") return;
+    const focusable = () =>
+      Array.from(
+        shell.current?.querySelectorAll<HTMLElement>(
+          "button:not([disabled]):not([aria-hidden='true']), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        ) ?? [],
+      ).filter((el) => el.getClientRects().length > 0);
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.key === "Escape") {
+        const target = e.target as Element | null;
+        if (target?.closest?.(".bmg-pop")) return; // the glass popover closes itself first
+        e.stopPropagation();
+        collapseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const nodes = focusable();
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const inside = shell.current?.contains(document.activeElement);
+      if (e.shiftKey && (!inside || document.activeElement === first)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || document.activeElement === last)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+    // collapse stays in this component and closes over this mode only.
+  }, [mode]);
+
+  // The trap listener reads only the ref, so it never goes stale without re-subscribing.
+  useEffect(() => {
+    collapseRef.current = collapse;
+  });
 
   // The engine pans/zooms from native listeners on the scene host: keep panel gestures to the panel.
   useEffect(() => {
@@ -265,11 +320,6 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
   const changeTab = (next: PanelTab) => {
     setLocalTab(next);
     props.onTabChange?.(next);
-  };
-  const collapse = () => {
-    if (variant === "panel") setExpanded(false);
-    onClose?.();
-    toggle.current?.focus();
   };
   const expand = () => {
     setExpanded(true);
@@ -585,8 +635,7 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
             </div>
           </div>
           <div className="bmg-toolbar">
-            <AdjustGlassControl />
-            <button
+                        <button
               ref={toggle}
               type="button"
               className="bm-btn bm-btn--ghost"
@@ -609,6 +658,7 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
                 id={`${id}-tab-${t.id}`}
                 type="button"
                 role="tab"
+                title={t.label}
                 aria-selected={tab === t.id}
                 aria-controls={`${id}-panel`}
                 tabIndex={i === tabIndex ? 0 : -1}
@@ -656,7 +706,9 @@ export default function BriefMintGlassPanel(props: BriefMintGlassPanelProps) {
   );
 }
 
-// Glass material comes from --gw-* (GlassProvider) inside .bm-glass; colors are --bm-* tokens.
+// Glass material is fixed by the --bm-glass-* tokens in src/styles/briefmint-tokens.css.
+// (The former glass-appearance control and provider were removed;
+// the recipe now binds directly to the fixed frosted tokens.)
 // Bare glass carries text-primary only; secondary copy sits on .bmg-card wells (navy at 70%).
 const STYLES = `
 .bmg-host { display: block; height: 100%; min-height: 0; pointer-events: none; }
@@ -680,13 +732,13 @@ const STYLES = `
   position: fixed;
   inset: 0;
   margin: auto;
-  z-index: 70;
+  z-index: var(--z-overlay);
   width: min(1100px, 92vw);
   height: min(86svh, 860px);
   max-height: none;
   animation: bmg-in 0.22s ease-out;
 }
-.bmg-scrim { position: fixed; inset: 0; z-index: 69; background: var(--bm-scrim); pointer-events: auto; }
+.bmg-scrim { position: fixed; inset: 0; z-index: var(--z-scrim); background: var(--bm-scrim); pointer-events: auto; }
 @keyframes bmg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .bmg-shell button, .bmg-shell a { font: inherit; }
 .bmg-shell button { cursor: pointer; }
@@ -699,14 +751,25 @@ const STYLES = `
 .bmg-brand-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: var(--bm-radius-sm); background: var(--bm-accent); color: var(--bm-on-accent); }
 .bmg-toolbar { display: flex; align-items: center; gap: var(--bm-space-2); flex-wrap: wrap; }
 .bmg-extra { padding: var(--bm-space-2) var(--bm-space-4); border-bottom: 1px solid var(--bm-line); }
-.bmg-tabs { display: flex; gap: var(--bm-space-1); padding: var(--bm-space-2) var(--bm-space-3); overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--bm-line); }
+.bmg-tabs { display: flex; align-items: stretch; gap: var(--bm-space-1); padding: var(--bm-space-2) var(--bm-space-3); border-bottom: 1px solid var(--bm-line); }
+/* Equal-width flexible tabs: the tablist always fits the panel, never clips or scrolls. */
 .bmg-tabs button {
-  display: inline-flex; align-items: center; gap: 6px; min-height: var(--bm-touch); padding: 0 var(--bm-space-3);
+  flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-height: var(--bm-touch); padding: 0 var(--bm-space-2);
   border: 1px solid transparent; border-radius: 999px; background: none; color: var(--bm-text-primary);
-  font-weight: 600; white-space: nowrap;
+  font-weight: 600; font-size: var(--bm-text-xs); white-space: nowrap;
 }
+.bmg-tabs button > span { overflow: hidden; text-overflow: ellipsis; }
 .bmg-tabs button:hover { background: color-mix(in srgb, var(--bm-text-primary) 10%, transparent); }
-.bmg-tabs button[aria-selected="true"] { border-color: var(--bm-accent); background: color-mix(in srgb, var(--bm-accent) 22%, var(--bm-bg-1)); }
+.bmg-tabs button[aria-selected="true"] { border-color: var(--bm-accent); background: color-mix(in srgb, var(--bm-accent) 30%, var(--bm-bg-1)); color: var(--bm-text-primary); }
+/* Narrow panels (including the ~420px HUD panel and small-screen overlays): drop the labels visually but
+   keep them for assistive tech and let the icon-only tab carry the full label as a tooltip. */
+@container bmg (max-width: 439.9px) {
+  .bmg-tabs button > span {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
 .bmg-body { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; padding: var(--bm-space-4); display: grid; gap: var(--bm-space-4); align-content: start; }
 .bmg-grid { display: grid; gap: var(--bm-space-4); grid-template-columns: minmax(0, 1fr); align-content: start; }
 @container bmg (min-width: 760px) {
@@ -755,7 +818,7 @@ const STYLES = `
 .bmg-cards { display: grid; gap: var(--bm-space-3); grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
 .bmg-shell .opp-filters { position: static; }
 .bmg-fixture { display: flex; align-items: center; gap: var(--bm-space-2); margin: 0; padding: var(--bm-space-2) var(--bm-space-3); border: 1px dashed var(--bm-warning); border-radius: var(--bm-radius-sm); background: color-mix(in srgb, var(--bm-bg-1) 85%, transparent); color: var(--bm-warning); font-weight: 600; }
-.bmg-toast { position: absolute; left: 50%; bottom: var(--bm-space-4); transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: var(--bm-space-2); max-width: calc(100% - 24px); padding: var(--bm-space-3) var(--bm-space-4); border-radius: var(--bm-radius-md); background: var(--bm-accent); color: var(--bm-on-accent); font-weight: 600; }
+.bmg-toast { position: absolute; left: 50%; bottom: var(--bm-space-4); transform: translateX(-50%); z-index: var(--z-toasts); display: flex; align-items: center; gap: var(--bm-space-2); max-width: calc(100% - 24px); padding: var(--bm-space-3) var(--bm-space-4); border-radius: var(--bm-radius-md); background: var(--bm-accent); color: var(--bm-on-accent); font-weight: 600; }
 @media (max-width: 700px) {
   .bmg-shell[data-mode="overlay"] { width: 96vw; height: 92svh; }
   .bmg-top { padding: var(--bm-space-2) var(--bm-space-3); }

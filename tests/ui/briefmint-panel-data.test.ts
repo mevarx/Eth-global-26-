@@ -1,13 +1,10 @@
 // Pure-helper tests for the BriefMint glass panel: PRD §10 pipeline states (incl. stale and
-// unavailable), readiness, public footprint, opportunity list states, chips, tabs and glass settings.
+// unavailable), readiness, public footprint, opportunity list states, chips and tabs. (Glass look is fixed; the settings helpers are gone.)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BRIGHTEST_SCENE_HEX,
   CITY_MIN_TEXT_GLASS_OPACITY,
-  DASHBOARD_MIN_TEXT_GLASS_OPACITY,
-  GLASS_DEFAULTS,
-  GLASS_OPACITY_MAX,
   GLASS_TINT_ALPHA,
   GLASS_UNDERLAY_ALPHA,
   GLASS_WELL_ALPHA,
@@ -16,13 +13,8 @@ import {
   deriveReadiness,
   derivePipeline,
   derivePublicFootprint,
-  glassCssVars,
-  glassPresets,
-  minOpacityForScope,
   nextTabIndex,
-  normalizeGlass,
   opportunitiesViewState,
-  parseStoredGlass,
   recentBriefs,
   sessionLabel,
   type PipelineStage,
@@ -229,57 +221,6 @@ test("tab keyboard model wraps and jumps", () => {
   assert.equal(nextTabIndex("End", 0, 4), 3);
   assert.equal(nextTabIndex("Enter", 0, 4), null);
   assert.equal(nextTabIndex("ArrowRight", 0, 0), null);
-});
-
-test("glass: normalize clamps like the reference, with a per-scope opacity floor", () => {
-  const min = 0.6;
-  const n = normalizeGlass({ blur: 99, opacity: 0.1, saturation: 9, edge: -1, tint: "red" }, min);
-  assert.deepEqual(n, { blur: 40, opacity: min, saturation: 2, edge: 0, tint: GLASS_DEFAULTS.tint });
-  assert.equal(normalizeGlass({ opacity: 5 }, min).opacity, GLASS_OPACITY_MAX);
-  assert.equal(normalizeGlass({ blur: -3, saturation: 0 }, min).blur, 0);
-  assert.equal(normalizeGlass({ saturation: 0 }, min).saturation, 0.5);
-  assert.equal(normalizeGlass({ tint: "#A1b2C3" }, min).tint, "#A1b2C3");
-  assert.deepEqual(normalizeGlass(null, min), normalizeGlass({}, min));
-  assert.equal(normalizeGlass({ opacity: Number.NaN, blur: Number.NaN }, min).blur, GLASS_DEFAULTS.blur);
-});
-
-test("glass: css variables for the five --gw-* properties", () => {
-  assert.deepEqual(glassCssVars({ blur: 12, opacity: 0.7, saturation: 1.3, tint: "#112233", edge: 0.4 }), {
-    "--gw-blur": "12px",
-    "--gw-opacity": 0.7,
-    "--gw-saturation": 1.3,
-    "--gw-tint": "#112233",
-    "--gw-edge": 0.4,
-  });
-});
-
-test("glass: stored settings parse defensively (blocked, corrupt, wrong types)", () => {
-  assert.equal(parseStoredGlass(null), null);
-  assert.equal(parseStoredGlass("{nope"), null);
-  assert.equal(parseStoredGlass("[1]"), null);
-  assert.deepEqual(parseStoredGlass('{"blur":5,"opacity":"x","tint":"#ffffff","evil":1}'), { blur: 5, tint: "#ffffff" });
-});
-
-test("glass: presets keep Clear at the scope floor and Frosted at the defaults", () => {
-  const p = glassPresets(0.6);
-  assert.deepEqual(p.map((x) => x.name), ["Clear", "Frosted", "Solid"]);
-  assert.equal(p[0].value.opacity, 0.6);
-  assert.deepEqual(p[1].value, GLASS_DEFAULTS);
-  for (const preset of p) {
-    for (const scope of ["city", "dashboard"] as const) {
-      const n = normalizeGlass(preset.value, minOpacityForScope(scope));
-      assert.ok(n.opacity >= minOpacityForScope(scope));
-    }
-  }
-});
-
-test("glass: floors are above the owner's 0.35 city minimum and the default respects both scopes", () => {
-  assert.ok(CITY_MIN_TEXT_GLASS_OPACITY >= 0.35);
-  assert.ok(DASHBOARD_MIN_TEXT_GLASS_OPACITY >= CITY_MIN_TEXT_GLASS_OPACITY);
-  assert.ok(GLASS_DEFAULTS.opacity >= CITY_MIN_TEXT_GLASS_OPACITY);
-  assert.ok(GLASS_DEFAULTS.opacity <= GLASS_OPACITY_MAX);
-  assert.equal(minOpacityForScope("city"), CITY_MIN_TEXT_GLASS_OPACITY);
-  assert.equal(minOpacityForScope("dashboard"), DASHBOARD_MIN_TEXT_GLASS_OPACITY);
 });
 
 test("glass: text-primary keeps 4.5:1 at the city minimum over the brightest scene colors", () => {

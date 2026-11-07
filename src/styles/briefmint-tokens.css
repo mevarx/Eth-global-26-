@@ -59,9 +59,12 @@
   --bm-chip-info-bg: color-mix(in srgb, var(--bm-info) 16%, var(--bm-bg-1));
   --bm-chip-muted-bg: color-mix(in srgb, var(--bm-text-muted) 16%, var(--bm-bg-1));
 
-  /* Glass defaults (reference "Frosted"); the GlassProvider overrides via --gw-* */
+  /* Glass: FIXED at the reference "Frosted" preset. No runtime writer exists
+     anymore (the adjustable glass provider was removed), so these are the only
+     values .bm-glass uses; 0.7 opacity is the former Frosted default and stays
+     above the 0.55 text-readability floor. */
   --bm-glass-blur: 22px;
-  --bm-glass-opacity: 0.3;
+  --bm-glass-opacity: 0.7;
   --bm-glass-saturation: 1.2;
   --bm-glass-edge: 0.6;
   --bm-glass-surface: var(--bm-bg-1);
@@ -108,23 +111,23 @@
   --bm-scene-plate-edge: #5c564a;
 }
 
-/* ---- Glass: reference .gw-glass recipe, driven by --gw-* with --bm-glass-* fallbacks ---- */
+/* ---- Glass: reference .gw-glass recipe, fixed at --bm-glass-* (fixed --bm-glass-* tokens, no runtime writer) ---- */
 .bm-glass {
   position: relative;
   isolation: isolate;
   background: color-mix(
     in srgb,
-    var(--gw-surface, var(--bm-glass-surface)) calc(var(--gw-opacity, var(--bm-glass-opacity)) * 100%),
+    var(--bm-glass-surface) calc(var(--bm-glass-opacity) * 100%),
     transparent
   );
-  backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
-  -webkit-backdrop-filter: blur(var(--gw-blur, var(--bm-glass-blur))) saturate(var(--gw-saturation, var(--bm-glass-saturation)));
+  backdrop-filter: blur(var(--bm-glass-blur)) saturate(var(--bm-glass-saturation));
+  -webkit-backdrop-filter: blur(var(--bm-glass-blur)) saturate(var(--bm-glass-saturation));
   box-shadow:
     inset 0 1px 0
-      color-mix(in srgb, var(--gw-highlight, var(--bm-glass-highlight)) calc(var(--gw-edge, var(--bm-glass-edge)) * 100%), transparent),
+      color-mix(in srgb, var(--bm-glass-highlight) calc(var(--bm-glass-edge) * 100%), transparent),
     inset 0 0 0 1px
-      color-mix(in srgb, var(--gw-highlight, var(--bm-glass-highlight)) calc(var(--gw-edge, var(--bm-glass-edge)) * 34%), transparent),
-    0 20px 52px -25px var(--gw-shadow, var(--bm-glass-shadow));
+      color-mix(in srgb, var(--bm-glass-highlight) calc(var(--bm-glass-edge) * 34%), transparent),
+    0 20px 52px -25px var(--bm-glass-shadow);
   color: var(--bm-text-primary);
 }
 .bm-glass::before {
@@ -132,7 +135,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--gw-tint, var(--bm-glass-tint));
+  background: var(--bm-glass-tint);
   opacity: 0.12;
   pointer-events: none;
   border-radius: inherit;
@@ -142,7 +145,7 @@
 }
 @supports not (backdrop-filter: blur(1px)) {
   .bm-glass {
-    background: var(--gw-fallback, var(--bm-glass-fallback));
+    background: var(--bm-glass-fallback);
   }
 }
 
@@ -234,4 +237,15 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bm-btn { transition: none; }
+}
+
+/* fix pass (FIX 3/FIX 5): shared layering + sticky offsets */
+:root {
+  --nav-height: 64px;
+  --z-scene: 0;
+  --z-labels: 10;
+  --z-hud: 20;
+  --z-scrim: 30;
+  --z-overlay: 40;
+  --z-toasts: 50;
 }
