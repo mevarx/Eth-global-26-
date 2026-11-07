@@ -10,8 +10,13 @@ import { hashPublicOpportunity, projectPublicOpportunity, type BriefView } from 
 const id = `0x${"a".repeat(64)}`, intentId = `0x${"b".repeat(64)}`, tx = `0x${"c".repeat(64)}`, key = `0x${"d".repeat(64)}`;
 const owner = `0x${"1".repeat(40)}`, other = `0x${"2".repeat(40)}`;
 const time = "2026-11-06T00:00:00.000Z";
+// Deadline = fixture time + one day, the exact date the block-height
+// expectations below are derived from. Every service in this file (including
+// the default-constructor one above) is pinned to the fixture clock, so the
+// "within the next seven days" window is evaluated against the fixture time.
+const deadline = new Date(Date.parse(time) + 24 * 3600 * 1000).toISOString();
 const candidate = { parameters: { title: "Graphics", summary: "Create graphics", category: "design" as const, language: "en" as const,
-  budgetUsdCents: null, deadline: "2026-11-07T00:00:00.000Z", contactUrl: null },
+  budgetUsdCents: null, deadline, contactUrl: null },
   sections: { deliverables: ["Graphic"], acceptanceCriteria: ["Editable"], exclusions: [], openQuestions: [] }, status: "open" as const };
 const item = { text: "Graphic", sourceIds: ["seg_001"], basis: "provided" as const };
 let db: ReturnType<typeof openDatabase>;
@@ -432,7 +437,10 @@ describe("publication intent and independent reconciliation", () => {
     expect(await slow).toMatchObject({ pending: false, brief: { publication: { status: "live", freshness: "stale" } } });
   });
   it("keeps unbound reverted receipts pending and fails closed when reader is unavailable", async () => {
-    await expect(new BriefPublicationService(db).prepare(owner, id, request())).rejects.toMatchObject({ code: "ARKIV_UNAVAILABLE" });
+    // The default constructor owns no reader, so the first call must fail closed.
+    // The wall-clock deadline window is bypassed by pinning the same fixture clock
+    // as the other tests: these assertions only exercise reader availability.
+    await expect(new BriefPublicationService(db, undefined, () => new Date(time)).prepare(owner, id, request())).rejects.toMatchObject({ code: "ARKIV_UNAVAILABLE" });
     await service.prepare(owner, id, request());
     receipt = { status: "reverted", chainId: 7794095, signer: owner, entityKeys: [], blockNumber: "101" };
     expect(await service.reconcile(owner, id, reconcile(tx))).toMatchObject({ pending: true, brief: { publication: { status: "pending", confirmed: null } } });

@@ -93,3 +93,17 @@ font fallback and shader failure modes were not exercised. FAIL: Phase3 commit `
 scene removals rather than a cleanup-only commit; history was not rewritten due the no-rewrite rule. See
 `docs/ui-audit.md` and reviewer lines/paths in this checkpoint for limitations and manual wallet/device steps.
 The PRD file and attribution license remain unverified. Dev server stopped after route smoke and screenshots.
+
+## Fix pass 2026-11-07 (tag `pre-fix-pass`)
+All seven spec fixes landed in one pass. Per-fix root causes and files: see
+`docs/ui-audit.md` and the commit list of the fix-pass branch. Gains:
+1+3 scene depth key + building-occlusion mask + label re-anchor + z-index
+token scale with inert/focus-trap overlay; 2 glass fixed at Frosted defaults,
+Adjust glass removed incl. provider and localStorage; 4+5 PageShell/Block/
+BlockGrid system, sticky 480px detail panel, solid-navy nav/filter underlay,
+shared SearchField; 6 equal-flex HUD tabs with icon-only fallback under 440px;
+7 shared opportunities hook + module cache (N/M semantics, loading-not-0),
+publication test clock fixed. Verified: typecheck/lint clean, server tests
+182/182, UI tests 167/167, production build clean. Visual browser passes
+confirmed the city scene and the Opportunities page; remaining manual checks:
+overlay focus walk, zoom 0.75/1/1.5 sweep, 390px phone width.
