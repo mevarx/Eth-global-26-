@@ -6,6 +6,8 @@
 import { useMemo, type KeyboardEvent, type ReactNode } from "react";
 import { EXPLAINERS, EXPLAINER_IDS, type ExplainerId } from "./explainers";
 import { toWorld } from "./iso-layout";
+import { OCCLUSION_MASK_ID } from "./OcclusionMask";
+import { isRearObject } from "./scene-depth";
 import { SLOTS, rectCentre, type GridRect, type LandmarkKind } from "./slots";
 
 interface Pt {
@@ -252,6 +254,11 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.bm-lm__ring{animation:none!important}}
 `;
 
+/** Slot-driven rear/front split with the same mask Scenery uses (defs live in the layer root). */
+function rearMask(kind: LandmarkKind): string | undefined {
+  return isRearObject(slotRect(kind)) ? `url(#${OCCLUSION_MASK_ID})` : undefined;
+}
+
 export default function Landmarks({ selected = null, onOpen, reducedMotion }: LandmarksProps) {
   const geo = useMemo(
     () => ({
@@ -282,7 +289,9 @@ export default function Landmarks({ selected = null, onOpen, reducedMotion }: La
           "boundary",
           <polygon className="bm-lm__ring" points={geo.gate.ring} />,
           <>
-            <GatehouseArt />
+            <g mask={rearMask("gatehouse")}>
+              <GatehouseArt />
+            </g>
             <Pin x={geo.gate.c.x} y={geo.gate.c.y - 58} selected={selected === "boundary"} />
           </>,
         )}
@@ -290,7 +299,9 @@ export default function Landmarks({ selected = null, onOpen, reducedMotion }: La
           "native-expiry",
           <polygon className="bm-lm__ring" points={geo.clock.ring} />,
           <>
-            <ClockTowerArt />
+            <g mask={rearMask("clock-tower")}>
+              <ClockTowerArt />
+            </g>
             <Pin x={geo.clock.c.x} y={geo.clock.c.y - 98} selected={selected === "native-expiry"} />
           </>,
         )}

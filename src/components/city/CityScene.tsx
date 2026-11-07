@@ -5,7 +5,6 @@
 // (pure mapping of persisted state); no animation or camera callback reads or writes brief state.
 import "./city.css";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { GlassProvider } from "@/components/hud/glass-context";
 import StatusChip, { type StatusTone } from "@/components/opportunities/StatusChip";
 import type { BriefFreshness, BriefSummary, BriefView, OpportunityView } from "@/lib/shared/briefmint";
 import { AmbientStreets, AmbientWater } from "./AmbientLife";
@@ -15,6 +14,7 @@ import { GroundAmbient, SkyAmbient } from "./CityAmbient";
 import DistrictLayer from "./DistrictLayer";
 import IsoBuilding from "./IsoBuilding";
 import Landmarks, { landmarkLabelSpecs } from "./Landmarks";
+import BuildingOcclusionMask from "./OcclusionMask";
 import { Scenery, sceneryLabelSpecs } from "./Scenery";
 import Worker from "./Worker";
 import { createAmbientTicker, type AmbientTicker } from "./ambient-ticker";
@@ -28,6 +28,7 @@ import { EXPLAINERS, EXPLAINER_IDS, type ExplainerId } from "./explainers";
 import { keyBuildingBox } from "./iso-buildings";
 import { buildingLabelSpecs, estimateLabelSize, labelFontPx, type LabelSpec, type Rect } from "./label-layout";
 import type { CameraState, CityEngine, MotionMode } from "./pixi/city-engine";
+import { onCityOverlay } from "@/components/hud/overlay-signal";
 import { stateLabelFor, tagFor, type BuildingTag } from "./scene-labels";
 import { BUILDINGS, BUILDINGS_BACK_TO_FRONT, VIEWBOX, type BuildingDef, type BuildingId } from "./scene-config";
 
@@ -235,6 +236,7 @@ export default function CityScene({
 }: CitySceneProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const workbenchRef = useRef<HTMLDivElement>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLElement>(null);
   const barRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -377,6 +379,26 @@ export default function CityScene({
     ticker?.setReducedMotion(reducedMotion);
   }, [ticker, reducedMotion]);
 
+  // BriefMint Expand overlay (any modal per the stacking contract): while it is open the scene,
+  // its labels and the left HUD column are inert + aria-hidden; focus is trapped in the dialog
+  // by the panel itself. Closing restores the previous root state.
+  const [modalOpen, setModalOpen] = useState(false);
+  useEffect(() => onCityOverlay((d) => setModalOpen(Boolean(d.open))), []);
+  useEffect(() => {
+    const setInert = (el: HTMLElement | null) => {
+      if (!el) return;
+      if (modalOpen) {
+        el.setAttribute("inert", "");
+        el.setAttribute("aria-hidden", "true");
+      } else {
+        el.removeAttribute("inert");
+        el.removeAttribute("aria-hidden");
+      }
+    };
+    setInert(hostRef.current);
+    setInert(leftColRef.current);
+  }, [modalOpen]);
+
   const select = (id: BuildingId) => {
     if (engineRef.current?.consumeDrag()) return;
     onSelect(id);
@@ -426,11 +448,11 @@ export default function CityScene({
 
   return (
     <div className="game" ref={rootRef} data-anim="on" data-engine={engineReady ? "ready" : "svg"}>
-      <GlassProvider scope="city" className="hud-layer">
+      <div className="hud-layer" data-glass-scope="city">
         <div className="hud-col hud-col--right" ref={workbenchRef}>
           {children}
         </div>
-        <div className="hud-col hud-col--left">
+        <div className="hud-col hud-col--left" ref={leftColRef}>
           <section className="hud-card bm-glass bm-glass--text" ref={statusRef} aria-label="City scan">
             <div className="hud-scan">
               <span className="hud-scan__big bm-num">{scan.loading ? "…" : unreadable ? "–" : scan.open}</span>
@@ -485,7 +507,7 @@ export default function CityScene({
             </p>
           </section>
         </div>
-      </GlassProvider>
+      </div>
 
       <div className="game-world" ref={hostRef}>
         <svg
@@ -535,8 +557,12 @@ export default function CityScene({
         </svg>
 
         {engineReady && ticker && (
+          // Object layer, painter order: water and boats first, then scenery (rear objects ride
+          // in the building-occlusion mask), record districts, life on the streets, landmarks.
+          // The label layer (screen space, below) paints last and never reorders this.
           <div className="game-overlay" ref={overlayRef}>
             <svg width={1} height={1} overflow="visible" style={{ overflow: "visible", pointerEvents: "none" }}>
+              <BuildingOcclusionMask />
               <AmbientWater ticker={ticker} camera={camera} getHostRect={getHostRect} reducedMotion={reducedMotion} />
               <Scenery ticker={ticker} reducedMotion={reducedMotion} />
               <DistrictLayer
@@ -581,7 +607,16 @@ export default function CityScene({
           </div>
         )}
         {engineReady && (
-          <BuildingLabels camera={camera} specs={labelSpecs} selectedId={selected} onActivate={activateLabel} avoidRects={avoidRects} tags={tags} />
+          <BuildingLabels
+            camera={camera}
+            specs={labelSpecs}
+            selectedId={selected}
+            onActivate={activateLabel}
+            avoidRects={avoidRects}
+            tags={tags}
+            // Scenery nameplates collapse below zoom 0.9; buildings stay laid out at every zoom.
+            options={{ minZoom: { scenery: 0.9 } }}
+          />
         )}
       </div>
 

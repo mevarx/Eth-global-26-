@@ -1,5 +1,6 @@
 // Pure plan for the scenery layer: which slots get art, their name-plate inputs and the
 // animation pose maths. No React, no randomness; poses are pure functions of ticker time.
+import { sortSceneObjects, type GroundObject } from "./scene-depth";
 import { toWorld } from "./iso-layout";
 import { SLOTS, rectCentre, type SceneryKind, type ScenerySlot } from "./slots";
 
@@ -20,11 +21,31 @@ export const SCENERY_RENDERABLE_KINDS: readonly RenderableSceneryKind[] = [
   "grove",
 ];
 
-/** Scenery slots to draw, back (small gx+gy) to front so tall props overlap correctly. */
-export function sceneryDrawSlots(): ScenerySlot[] {
-  const depth = (s: ScenerySlot) => s.rect.gx + s.rect.w / 2 + s.rect.gy + s.rect.h / 2;
-  return SLOTS.filter((s): s is ScenerySlot => s.role === "scenery-block" && !s.existing).sort((a, b) => depth(a) - depth(b));
+function toGroundObject(s: ScenerySlot): ScenerySlot & GroundObject {
+  return { ...s, heightPx: SCENERY_ART_HEIGHT[s.scenery as RenderableSceneryKind] ?? 0 };
 }
+
+/** Scenery slots to draw, by the SHARED depth key (front gx+gy corner, then height): so tall
+ * props never paint over a neighbour that stands in front of them, city-wide. */
+export function sceneryDrawSlots(): (ScenerySlot & GroundObject)[] {
+  return sortSceneObjects(SLOTS.filter((s): s is ScenerySlot => s.role === "scenery-block" && !s.existing).map(toGroundObject));
+}
+
+/** Approximate art height of each renderer in world px (tiebreak for equal ground depth). */
+export const SCENERY_ART_HEIGHT: Record<RenderableSceneryKind, number> = {
+  park: 56,
+  market: 24,
+  court: 26,
+  solar: 12,
+  wind: 62,
+  garden: 10,
+  "bus-station": 30,
+  playground: 26,
+  amphitheater: 24,
+  dock: 46,
+  grove: 26,
+};
+
 
 /** Name-plate inputs for the label layer; anchor is a ground point in world px. */
 export function sceneryLabelSpecs(): Array<{ id: string; text: string; anchor: { x: number; y: number } }> {

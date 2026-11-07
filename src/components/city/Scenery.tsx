@@ -5,8 +5,10 @@
 // writes transform/opacity straight to the DOM (no React state); static under reduced motion.
 import { useEffect, useMemo, useRef } from "react";
 import type { AmbientTicker } from "./ambient-ticker";
+import { OCCLUSION_MASK_ID } from "./OcclusionMask";
 import { SCENERY_RENDERERS } from "./scenery-kinds";
 import { animPose, sceneryDrawSlots, type AnimKind } from "./scenery-plan";
+import { isRearObject } from "./scene-depth";
 
 export { sceneryLabelSpecs } from "./scenery-plan";
 
@@ -44,6 +46,18 @@ function apply(list: Animated[], t: number) {
 export function Scenery({ ticker, reducedMotion }: SceneryProps) {
   const root = useRef<SVGGElement>(null);
   const slots = useMemo(() => sceneryDrawSlots(), []);
+  // Rear objects (a key building stands in front of them) ride inside the building-occlusion
+  // mask: the building hole reveals the canvas building, so rear art can never paint over it.
+  const rear = useMemo(() => slots.filter((s) => isRearObject(s.rect)), [slots]);
+  const front = useMemo(() => slots.filter((s) => !isRearObject(s.rect)), [slots]);
+  const art = (s: (typeof slots)[number]) => {
+    const Renderer = SCENERY_RENDERERS[s.scenery as keyof typeof SCENERY_RENDERERS];
+    return (
+      <g key={s.id} data-scenery-slot={s.id} data-rear={isRearObject(s.rect) ? "true" : undefined}>
+        <Renderer rect={s.rect} />
+      </g>
+    );
+  };
 
   useEffect(() => {
     const g = root.current;
@@ -58,14 +72,8 @@ export function Scenery({ ticker, reducedMotion }: SceneryProps) {
 
   return (
     <g ref={root} aria-hidden="true" pointerEvents="none" data-scenery="">
-      {slots.map((s) => {
-        const Art = SCENERY_RENDERERS[s.scenery as keyof typeof SCENERY_RENDERERS];
-        return (
-          <g key={s.id} data-scenery-slot={s.id}>
-            <Art rect={s.rect} />
-          </g>
-        );
-      })}
+      <g mask={`url(#${OCCLUSION_MASK_ID})`}>{rear.map(art)}</g>
+      {front.map(art)}
     </g>
   );
 }

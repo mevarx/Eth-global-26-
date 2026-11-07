@@ -14,6 +14,7 @@ import {
   type LabelSpec,
   type Rect,
 } from "../../src/components/city/label-layout";
+import { sceneryLabelSpecs } from "../../src/components/city/scenery-plan";
 
 const overlap = (a: Rect, b: Rect) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 0 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0;
 
@@ -142,4 +143,63 @@ test("labelFontPx is clamped to 12..16 and anchors/aria cover the five buildings
   const anchors = labelAnchorsForBuildings();
   assert.deepEqual(anchors.map((a) => a.id).sort(), Object.keys(BUILDING_ARIA).sort());
   for (const a of anchors) assert.ok(Number.isFinite(a.anchor.x) && Number.isFinite(a.anchor.y));
+});
+
+/** Mirrors CityScene.buildAllLabelSpecs (buildings first, then landmark plates, then scenery). */
+function allSpecs(zoom: number): LabelSpec[] {
+  const building = (kind: "landmark" | "scenery", specs: Array<{ id: string; text: string; anchor: { x: number; y: number } }>) =>
+    specs.map(
+      (i): LabelSpec => ({
+        id: i.id,
+        text: i.text,
+        kind,
+        anchor: i.anchor,
+        ...estimateLabelSize(i.text, kind, labelFontPx(zoom, kind)),
+        priority: kind === "landmark" ? 60 : 30,
+      }),
+    );
+  return [...buildingLabelSpecs(zoom), ...building("scenery", sceneryLabelSpecs())];
+}
+
+test("scenery plates collapse below zoom 0.9 (CityScene option) and never touch a building plate", () => {
+  // the shipped CityScene configuration
+  const opts = { minZoom: { scenery: 0.9 } as const };
+  const low = cameraAt(1440, 900, 436, 0.78);
+  const outLow = layoutLabels(allSpecs(low.z), low, { w: 1440, h: 900 }, SCENARIOS[0].avoid, opts);
+  const sceneryLow = outLow.filter((_p, i) => allSpecs(low.z)[i].kind === "scenery");
+  assert.ok(sceneryLow.length > 0, "scenery specs exist");
+  assert.ok(sceneryLow.every((p) => p.hidden), "scenery labels hidden below zoom 0.9");
+
+  const high = cameraAt(1440, 900, 436, 1.25); // z above the 0.9 threshold at which plates return
+  const specsHigh = allSpecs(high.z);
+  const outHigh = layoutLabels(specsHigh, high, { w: 1440, h: 900 }, SCENARIOS[0].avoid, opts);
+  const visiblePlates = outHigh
+    .map((p, i) => ({ p, s: specsHigh[i] }))
+    .filter((x) => !x.p.hidden)
+    .map((x) => ({ id: x.p.id, x: x.p.x, y: x.p.y, w: x.s.width, h: x.s.height, kind: x.s.kind }));
+  for (let i = 0; i < visiblePlates.length; i++) {
+    if (visiblePlates[i].kind !== "scenery") continue;
+    for (let j = 0; j < visiblePlates.length; j++) {
+      if (visiblePlates[j].kind !== "building") continue;
+      assert.ok(!overlap(visiblePlates[i], visiblePlates[j]), `${visiblePlates[i].id} must not touch ${visiblePlates[j].id}`);
+    }
+  }
+});
+
+test("every placed plate stays within one building height of its object anchor", () => {
+  const cam = cameraAt(1440, 900, 436, 1);
+  const specs = allSpecs(cam.z);
+  const opts = { minZoom: { scenery: 0.9 } as const };
+  const out = layoutLabels(specs, cam, { w: 1440, h: 900 }, SCENARIOS[0].avoid, opts);
+  const walls = buildingBodies().map((b) => b.rect.h);
+  const oneBuildingHeight = Math.max(...walls);
+  for (const [i, p] of out.entries()) {
+    if (p.hidden) continue;
+    const anchor = worldToScreen(cam, specs[i].anchor);
+    const plateCenterY = p.y + specs[i].height / 2;
+    assert.ok(
+      Math.abs(plateCenterY - anchor.y) <= oneBuildingHeight + specs[i].height,
+      `${specs[i].id} plate anchored within one building height of its object`,
+    );
+  }
 });

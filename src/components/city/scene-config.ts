@@ -97,6 +97,8 @@ export const BUILDINGS: BuildingDef[] = [
 /** Back-to-front render order (painter's algorithm on ground depth). */
 export const BUILDINGS_BACK_TO_FRONT: BuildingDef[] = [...BUILDINGS].sort((a, b) => a.cy - b.cy);
 
+export const BUILDING_IDS: BuildingId[] = BUILDINGS.map((b) => b.id);
+
 export const BUILDING_BY_ID: Record<BuildingId, BuildingDef> = Object.fromEntries(
   BUILDINGS.map((b) => [b.id, b]),
 ) as Record<BuildingId, BuildingDef>;

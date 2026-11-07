@@ -30,7 +30,7 @@ const GLYPH: Record<LabelTone, string> = { ok: "✓", warn: "⚠", info: "●", 
 const LEADING_GLYPH = /^[✓⚠●○]\s*/;
 
 const CSS = `
-.bm-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none;visibility:hidden;--bm-lfs-b:14px;--bm-lfs-s:12px}
+.bm-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:var(--z-labels);--bm-lfs-b:14px;--bm-lfs-s:12px}
 .bm-pin,.bm-pin-dot{position:absolute;left:0;top:0;pointer-events:none;background:var(--bm-text-secondary);visibility:hidden}
 .bm-pin{width:1px;height:1px;transform-origin:0 0;opacity:.85}
 .bm-pin-dot{width:5px;height:5px;border-radius:50%}
@@ -41,8 +41,8 @@ const CSS = `
   box-shadow:0 2px 8px color-mix(in srgb,var(--bm-bg-0) 70%,transparent);will-change:transform;visibility:hidden}
 .bm-nameplate::after{content:"";position:absolute;inset:-4px}
 .bm-nameplate[data-kind="plot"],.bm-nameplate[data-kind="landmark"],.bm-nameplate[data-kind="scenery"]{padding:4px 10px;border-radius:6px;font-size:var(--bm-lfs-s);letter-spacing:.02em}
-.bm-nameplate[data-selected="true"]{border-color:var(--bm-accent);box-shadow:0 0 0 1px var(--bm-accent),0 2px 8px color-mix(in srgb,var(--bm-bg-0) 70%,transparent);z-index:2}
-.bm-nameplate:focus-visible{outline:var(--bm-focus-ring,2px solid var(--bm-accent));outline-offset:2px;z-index:3}
+.bm-nameplate[data-selected="true"]{border-color:var(--bm-accent);box-shadow:0 0 0 1px var(--bm-accent),0 2px 8px color-mix(in srgb,var(--bm-bg-0) 70%,transparent)}
+.bm-nameplate:focus-visible{outline:var(--bm-focus-ring,2px solid var(--bm-accent));outline-offset:2px}
 .bm-nameplate__tag{font-size:12px;font-weight:600;letter-spacing:0;line-height:1.25}
 .bm-nameplate__tag[data-tone="info"]{color:var(--bm-info)}
 .bm-nameplate__tag[data-tone="ok"]{color:var(--bm-success)}
