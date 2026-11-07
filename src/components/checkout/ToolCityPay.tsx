@@ -1,5 +1,5 @@
 "use client";
-// Buyer checkout — Agent B owned. Exact sequence per the frontend contract:
+// Buyer checkout, Agent B owned. Exact sequence per the frontend contract:
 //  1. require the connected account to equal job.buyerAddress,
 //  2. switch to Whitechain (terms chain),
 //  3. read ERC-20 allowance owner->checkout; if below the amount, approve

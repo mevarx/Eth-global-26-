@@ -1,7 +1,7 @@
 # Tool City — Teammate's Agent Assignment: City, Frontend and Arkiv
 
 **Assigned to:** your teammate + OpenCode, Agent B.  
-**Required companion:** [Common structure and integration contract](TOOL-CITY-COMMON-STRUCTURE.md), version 1.0.  
+**Required companion:** [Common structure and integration contract](docs/briefs/TOOL-CITY-COMMON-STRUCTURE.md), version 1.0.
 **Branch:** `codex/city-frontend`.  
 **Status:** implementation instructions, not implemented code. Read the common document in full before starting.
 

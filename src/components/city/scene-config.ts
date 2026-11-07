@@ -1,4 +1,4 @@
-// City scene configuration — positions, streets and waypoints.
+// City scene configuration, positions, streets and waypoints.
 // Original fixed geometry for the Tool City neighbourhood (SVG viewBox 640x420).
 // No game engine, no pathfinding: the worker walks fixed street waypoints.
 

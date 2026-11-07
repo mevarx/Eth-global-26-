@@ -1,6 +1,6 @@
 "use client";
 // Job detail: authorized status, ToolCityPay checkout, deliberate Start/Retry
-// (POST run — user action only, never on mount), source-aligned review with
+// (POST run, user action only, never on mount), source-aligned review with
 // export, and honest evidence. useJob polls ~2s while active; reopening a
 // ready job simply loads the saved result.
 import { useQueryClient } from "@tanstack/react-query";
@@ -74,7 +74,7 @@ export default function JobDetailPage() {
         <div className="card">
           <h2>Source (en, immutable)</h2>
           {job.sourceSegments.map((s) => (
-            <p key={s.id}><span className="tc-mono tc-muted">{s.id}</span> — {s.text}</p>
+            <p key={s.id}><span className="tc-mono tc-muted">{s.id}</span>, {s.text}</p>
           ))}
         </div>
         <div className="card">

@@ -56,7 +56,7 @@ async function login(rt: BriefRuntime, wallet = owner) { const challenge = rt.au
 async function call(rt: BriefRuntime, action: BriefApiName, cookie: string, body?: unknown, id?: string, query = "") {
   const endpoint = briefApi[action];
   return handleBrief(action, new Request(origin + endpoint.path.replace(":id", id ?? "") + query, { method: endpoint.method,
-    headers: { Cookie: cookie, Origin: origin, "Content-Type": "application/json" },
+    headers: { Cookie: cookie, "x-briefmint-owner": rt.auth.session(new Request(origin, { headers: { Cookie: cookie } })).address, Origin: origin, "Content-Type": "application/json" },
     ...(endpoint.method === "GET" ? {} : { body: JSON.stringify(body ?? {}) }) }), id, rt);
 }
 async function data(response: Response, status = 200) { expect(response.status).toBe(status); return (await response.json()).data; }

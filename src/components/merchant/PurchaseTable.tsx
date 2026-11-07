@@ -1,5 +1,5 @@
 "use client";
-// PurchaseTable: verified merchant settlements only — never buyer drafts,
+// PurchaseTable: verified merchant settlements only, never buyer drafts,
 // model text or edits. CSV download comes from the server route.
 import type { MerchantPurchase } from "@/lib/shared/domain";
 

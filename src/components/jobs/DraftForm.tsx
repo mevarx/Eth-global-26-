@@ -58,7 +58,7 @@ export default function DraftForm({ workshopEntityKey, onCreated }: DraftFormPro
       <h3>New translation draft</h3>
       <p className="tc-muted">
         English → Hindi, recommended 100–250 words. Source and accepted terms become immutable once the job is
-        created — to change the source, make a new unpaid job.
+        created, to change the source, make a new unpaid job.
       </p>
       <div className="form-field">
         <label htmlFor="draft-text">Draft text (blank line = new segment)</label>
@@ -83,7 +83,7 @@ export default function DraftForm({ workshopEntityKey, onCreated }: DraftFormPro
         </button>
         {devFixturesEnabled() && (
           <button type="button" className="btn" disabled={busy} onClick={() => setText(DEMO_TEXT)}>
-            Load demo text (fixture — not live)
+            Load demo text (fixture, not live)
           </button>
         )}
       </div>

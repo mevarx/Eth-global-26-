@@ -2,11 +2,12 @@
 // Release Desk: exact public preview + explicit approval.
 // Approval binds the canonical public payload hash and the saved revision;
 // any later public-content edit invalidates it. Public preview is allowlist
-// only — private notes, source IDs, and database IDs never appear here.
+// only, private notes, source IDs, and database IDs never appear here.
 // Hashing is async (Web Crypto SHA-256 per the frozen contract).
 import { useEffect, useState } from "react";
 import { isApiError } from "@/lib/client/briefmint-api";
 import { useApproveBrief } from "@/lib/client/use-briefs";
+import { currentSessionGeneration, isCurrentSessionGeneration } from "@/lib/client/session-generation";
 import {
   hashPublicOpportunity,
   projectPublicOpportunity,
@@ -52,7 +53,7 @@ export default function ReleaseDesk({ brief, onSaved }: { brief: BriefView | nul
   if (!brief) return <p className="tc-muted">Save a private brief at the Creator&apos;s Home first.</p>;
   if (!candidate || !preview) {
     if (previewError) return <p className="error" role="alert">{previewError}</p>;
-    return <p className="tc-muted">Nothing compiled to preview yet — run compilation at the AI Studio.</p>;
+    return <p className="tc-muted">Nothing compiled to preview yet, run compilation at the AI Studio.</p>;
   }
 
   const approval = brief.review.status === "approved" ? brief.review.approval : null;
@@ -61,6 +62,7 @@ export default function ReleaseDesk({ brief, onSaved }: { brief: BriefView | nul
 
   const doApprove = async () => {
     setError(null);
+    const generation = currentSessionGeneration();
     try {
       const shown = projectPublicOpportunity(candidate, brief.draftRevision);
       const publicPayloadHash = await hashPublicOpportunity(shown);
@@ -68,9 +70,10 @@ export default function ReleaseDesk({ brief, onSaved }: { brief: BriefView | nul
         id: brief.id,
         req: { expectedRevision: brief.draftRevision, publicPayloadHash },
       });
+      if (!isCurrentSessionGeneration(generation)) return;
       onSaved(updated);
     } catch (e) {
-      if (isApiError(e) && e.status === 409) setError("CONFLICT: revision changed — review the current preview before approving.");
+      if (isApiError(e) && e.status === 409) setError("CONFLICT: revision changed, review the current preview before approving.");
       else setError(isApiError(e) ? `${e.code}: ${e.message}` : "Approval failed.");
     }
   };

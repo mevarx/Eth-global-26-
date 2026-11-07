@@ -36,7 +36,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("treasury"),
         parcel: false,
         unresolved: false,
-        note: "Job awaiting payment — the worker waits at the Treasury.",
+        note: "Job awaiting payment, the worker waits at the Treasury.",
       };
     case "payment_pending":
       return {
@@ -44,7 +44,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("treasury"),
         parcel: false,
         unresolved: false,
-        note: "Payment submitted, verification pending — the worker waits at the Treasury.",
+        note: "Payment submitted, verification pending, the worker waits at the Treasury.",
       };
     case "paid":
     case "running":
@@ -53,7 +53,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("studio"),
         parcel: false,
         unresolved: false,
-        note: "Job paid — the worker carries the document at the Translation Studio.",
+        note: "Job paid, the worker carries the document at the Translation Studio.",
       };
     case "ready":
       return {
@@ -61,7 +61,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("home"),
         parcel: true,
         unresolved: false,
-        note: "Translation ready — a saved parcel waits at the Creator's Home.",
+        note: "Translation ready, a saved parcel waits at the Creator's Home.",
       };
     case "interrupted":
     case "failed":
@@ -70,7 +70,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("studio"),
         parcel: false,
         unresolved: true,
-        note: "Paid job visibly unresolved at the Translation Studio — check retry eligibility.",
+        note: "Paid job visibly unresolved at the Translation Studio, check retry eligibility.",
       };
     default:
       return {
@@ -78,7 +78,7 @@ export function jobStateToScene(job: JobView | null): SceneTarget {
         ...at("studio"),
         parcel: false,
         unresolved: true,
-        note: "Unknown job status — check the saved job at the Translation Studio.",
+        note: "Unknown job status, check the saved job at the Translation Studio.",
       };
   }
 }

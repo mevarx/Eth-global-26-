@@ -9,7 +9,7 @@ export function BriefStatusBadge({ status }: { status: string }) {
 }
 
 export default function BriefList({ briefs }: { briefs: BriefSummary[] }) {
-  if (briefs.length === 0) return <p className="tc-muted">No private briefs yet — save one at the Creator&apos;s Home.</p>;
+  if (briefs.length === 0) return <p className="tc-muted">No private briefs yet, save one at the Creator&apos;s Home.</p>;
   return (
     <ul className="job-list">
       {briefs.map((b) => (

@@ -1,44 +1,5 @@
-# How Tool City uses Arkiv
+# How BriefMint uses Arkiv
 
-## Filters → discovery the UI can trust (but verifies)
+After wallet authentication, private notes are persisted in the access-controlled backend and sent server-side through the configured 0G Router model for a structured proposal. The owner edits the result, reviews the exact public projection, and approves a revision/hash. Only the canonical allowlisted public JSON is encoded into the Arkiv schema; notes, prompts, source references, model evidence, and private identifiers remain in SQLite.
 
-- `listWorkshops` queries `.from(WORKSHOP_SCHEMA).where(eq("app",
-  "tool-city.workshop.v1"))` — one merchant's catalogue in practice, but the
-  code assumes anyone may write under the tag.
-- Every row is reconciled against configured terms before display: owner vs
-  merchant address, chain id / checkout address / service id / terms hash
-  (addresses case-insensitive). The result is the `supported` flag — only a
-  supported, `active` workshop can start a purchase.
-- **User-visible effect:** the Registry Hall panel shows owner, entity key,
-  last successful refresh, and fresh/stale state. Loading, failed query, and
-  empty catalogue are three distinct screens; a failed refresh shows "stale",
-  never "withdrawn".
-
-## Edits → owner-signed presentation changes only
-
-- `updateWorkshop` patches `title` / `description` / `active` — and nothing
-  else. Checkout address, service, language pair, and terms references are
-  immutable after creation; there is no price editing because there is no
-  editable price.
-- `withdrawWorkshop` = `updateWorkshop(…, { active: false })`.
-- **User-visible effect:** after any write the UI refreshes the query on
-  focus/mount; withdrawal removes the workshop from new-job discovery while
-  existing paid jobs stay openable and reviewable. A wrong-wallet update
-  fails before broadcast with a plain error — no fake explorer link.
-
-## Expiry → listings die on their own
-
-- Creates use `ExpirationTime.fromDays(30)`; the receipt's `expiresAt` block
-  is shown after publication, and reads surface `$expiresAt` per listing.
-- **User-visible effect:** an expired listing reads as absent (SDK:
-  `NoEntityFoundError` → `null`), which the UI renders as "empty catalogue",
-  not as an error. Renewal path in this MVP is re-publication (no
-  `extendEntity` wired yet).
-
-## End-to-end shape
-
-Merchant connects wallet on Rabdi → `createWorkshop` (30-day listing) →
-buyer discovers via `listWorkshops` → server re-validates the same record via
-`read.ts` before job creation → payment on Whitechain → translation →
-review. Arkiv never sees private text or payment state; it stays the public,
-owner-signed front door.
+The owner wallet authorizes the create. The backend records transaction/receipt evidence and reads the entity back. Public discovery queries indexed Arkiv fields, and a standalone CLI reader can fetch/list public opportunities without the application API, cookies, or SQLite. One create, receipt, readback, and public discovery were demonstrated; update, close, and native expiry remain offline-only checks. Independent TEE verification is not established. See [live record evidence](../docs/evidence/LIVE_DEMO.md).

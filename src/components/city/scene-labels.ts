@@ -16,8 +16,8 @@ export function tagFor(id: BuildingId, city: CityState, fixture: boolean): Build
 function baseTag(id: BuildingId, city: CityState, fixture: boolean): BuildingTag | null {
   if (id === "studio") {
     if (city.studio === "running") return { text: "compiling…", tone: "info" };
-    if (city.studio === "failed") return { text: "⚠ failed — unresolved", tone: "warn" };
-    if (city.studio === "interrupted") return { text: "⚠ interrupted — unresolved", tone: "warn" };
+    if (city.studio === "failed") return { text: "⚠ failed, unresolved", tone: "warn" };
+    if (city.studio === "interrupted") return { text: "⚠ interrupted, unresolved", tone: "warn" };
   }
   if (id === "treasury") {
     if (city.release === "awaiting") return { text: "awaiting review", tone: "info" };
@@ -29,13 +29,13 @@ function baseTag(id: BuildingId, city: CityState, fixture: boolean): BuildingTag
         return { text: "waiting for confirmation", tone: "info" };
       case "live":
         // Fixture state never carries a live-looking label.
-        return fixture ? { text: "fixture — not published", tone: "muted" } : { text: "live on Arkiv", tone: "ok" };
+        return fixture ? { text: "fixture, not published", tone: "muted" } : { text: "live on Arkiv", tone: "ok" };
       case "closed":
         return { text: "closed", tone: "muted" };
       case "expired":
         return { text: "expired (confirmed)", tone: "muted" };
       case "stale":
-        return { text: "stale read — not expired", tone: "warn" };
+        return { text: "stale read, not expired", tone: "warn" };
       case "unavailable":
         return { text: "read unavailable", tone: "warn" };
     }

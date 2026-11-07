@@ -1,3 +1,5 @@
+> **Current status — 7 November 2026 IST:** This engineering record retains historical instructions/checkpoints. For the integrated Next.js setup use the [README](../README.md); for successful app generation and Arkiv create/read/discovery use [live evidence](evidence/LIVE_DEMO.md). Earlier Vite-city, HTTP 502-only, no-publication and backend-branch claims are historical. Independent TEE proof and live update/close/expiry remain unverified; do not retry the original unknown R3 intent.
+
 # BriefMint frontend handoff (Agent B)
 
 **Branch state:** uncommitted working tree in `tool-city/` (no git repo here —

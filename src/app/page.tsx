@@ -1,22 +1,41 @@
 "use client";
-// Home: BriefMint city — real opportunity discovery (independent Arkiv reads
+// Home: BriefMint city, real opportunity discovery (independent Arkiv reads
 // with backend list when available) plus the city and selected-building panel.
 // Loading / failed / empty states stay distinct; a failed refresh never proves
 // withdrawal, expiry, or deletion.
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import NavLinks from "@/components/app/NavLinks";
 import WalletControls from "@/components/wallet/WalletControls";
-import CityPanel from "@/components/city/CityPanel";
+import BriefEvidence from "@/components/briefs/BriefEvidence";
+import BriefIntakeForm from "@/components/briefs/BriefIntakeForm";
+import OpportunityPublisher from "@/components/briefs/OpportunityPublisher";
+import OpportunityReader from "@/components/briefs/OpportunityReader";
+import ReleaseDesk from "@/components/briefs/ReleaseDesk";
 import CityScene from "@/components/city/CityScene";
 import { briefStateToScene } from "@/components/city/brief-state-to-scene";
+import type { ExplainerId } from "@/components/city/explainers";
 import type { BuildingId } from "@/components/city/scene-config";
+import BriefMintGlassPanel, { type PanelTab } from "@/components/hud/BriefMintGlassPanel";
+import ExplainerPanel from "@/components/hud/ExplainerPanel";
 import { readOpportunitiesIndependent } from "@/lib/arkiv/opportunities-independent";
 import { briefmintApi, isApiError } from "@/lib/client/briefmint-api";
 import { useBriefs } from "@/lib/client/use-briefs";
 import { useSession } from "@/lib/client/use-session";
-import type { BriefmintConfig, BriefView, OpportunityFilters, OpportunityView } from "@/lib/shared/briefmint";
+import { isCurrentSessionGeneration, currentSessionGeneration } from "@/lib/client/session-generation";
+import { devFixturesEnabled } from "@/lib/shared/fixtures";
+import type { BriefFreshness, BriefmintConfig, BriefView, OpportunityFilters, OpportunityView } from "@/lib/shared/briefmint";
 
 const ACTIVE_BRIEF_POLL = new Set(["running", "pending"]);
+
+// The panel tab follows the selected building.
+const TAB_FOR_BUILDING: Record<BuildingId, PanelTab> = {
+  home: "briefs",
+  studio: "overview",
+  treasury: "briefs",
+  registry: "opportunities",
+  archive: "briefs",
+};
 
 export default function HomePage() {
   const sessionQ = useSession();
@@ -30,39 +49,51 @@ export default function HomePage() {
   const [oppFilters, setOppFilters] = useState<OpportunityFilters>({ status: "open" });
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [building, setBuilding] = useState<BuildingId>("home");
-  const [brief, setBrief] = useState<BriefView | null>(null);
-  const briefsQ = useBriefs(!!address);
+  const [building, setBuildingState] = useState<BuildingId>("home");
+  const [tab, setTab] = useState<PanelTab>(TAB_FOR_BUILDING.home);
+  const [explainerId, setExplainerId] = useState<ExplainerId | null>(null);
+  const setBuilding = (b: BuildingId) => {
+    setBuildingState(b);
+    setTab(TAB_FOR_BUILDING[b]);
+    setExplainerId(null);
+  };
+  const [storedBrief, setBrief] = useState<BriefView | null>(null);
+  const brief = address && storedBrief?.ownerAddress.toLowerCase() === address.toLowerCase() ? storedBrief : null;
+  const briefsQ = useBriefs(!!address, undefined, address);
   const briefSummaries = briefsQ.data?.briefs ?? [];
   const briefsLoading = briefsQ.isLoading;
   const [runBusy, setRunBusy] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const briefOperationEpoch = useRef(0);
+  const previousBriefId = useRef<string | null | undefined>(undefined);
+  const opportunityReadEpoch = useRef(0);
+  const opportunityRowCount = useRef(0);
 
   const loadOpportunities = useCallback(async (filters: OpportunityFilters) => {
+    const epoch = ++opportunityReadEpoch.current;
     setOppLoading(true);
     setOppError(null);
     // Public discovery runs through the independent Arkiv reader: no backend
     // opportunities endpoint exists in the frozen contract.
     try {
       const list = await readOpportunitiesIndependent({ accessKey: "" }, filters);
-      setOpportunities((prev) => {
-        if (prev.length > 0) setOppStale(true);
-        return list;
-      });
+      if (epoch !== opportunityReadEpoch.current) return;
+      opportunityRowCount.current = list.length;
+      setOpportunities(list);
       setOppStale(false);
       setLastRefresh(new Date().toISOString());
       setSelectedKey((prev) => prev ?? list.find((o) => o.status === "open")?.entityKey ?? list[0]?.entityKey ?? null);
     } catch {
-      if (opportunities.length > 0) {
+      if (epoch !== opportunityReadEpoch.current) return;
+      if (opportunityRowCount.current > 0) {
         setOppStale(true);
-        setOppError("Arkiv query failed — showing last confirmed list (stale). This does not mean records were withdrawn.");
+        setOppError("Arkiv query failed, showing last confirmed list (stale). This does not mean records were withdrawn.");
       } else {
         setOppError("Arkiv query failed. The catalogue could not be refreshed; this does not mean records were withdrawn or expired.");
       }
     } finally {
-      setOppLoading(false);
+      if (epoch === opportunityReadEpoch.current) setOppLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -76,7 +107,7 @@ export default function HomePage() {
         if (cancelled) return;
         setBriefConfigError(
           isApiError(e) && (e.status === 503 || e.code === "SERVICE_UNAVAILABLE")
-            ? "BriefMint backend unavailable (503) — public discovery continues via the independent Arkiv reader."
+            ? "BriefMint backend unavailable (503), public discovery continues via the independent Arkiv reader."
             : "BriefMint config unavailable.",
         );
       }
@@ -109,39 +140,86 @@ export default function HomePage() {
   const prevAddress = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (prevAddress.current !== undefined && prevAddress.current !== address) {
+      briefOperationEpoch.current += 1;
       setBrief(null);
+      setRunBusy(false);
+      setRunError(null);
     }
     prevAddress.current = address;
   }, [address]);
 
+  useEffect(() => {
+    if (previousBriefId.current !== undefined && previousBriefId.current !== (brief?.id ?? null)) {
+      briefOperationEpoch.current += 1;
+    }
+    previousBriefId.current = brief?.id ?? null;
+  }, [brief?.id]);
+
   // Poll the active brief ~2s; reopening a saved brief just loads state.
   useEffect(() => {
     if (!brief || (!ACTIVE_BRIEF_POLL.has(brief.executionStatus) && brief.publication.status !== "pending")) return;
+    const epoch = briefOperationEpoch.current;
+    const id = brief.id;
     const t = setInterval(async () => {
       try {
-        setBrief(await briefmintApi.getBrief(brief.id));
+        const updated = await briefmintApi.getBrief(id, address);
+        if (epoch === briefOperationEpoch.current) setBrief(updated);
       } catch {
         /* keep last known state */
       }
     }, 2000);
     return () => clearInterval(t);
-  }, [brief]);
+  }, [brief, address]);
 
   const handleRun = async () => {
-    if (!brief) return;
+    if (!brief || !address || brief.ownerAddress.toLowerCase() !== address.toLowerCase()) return;
+    const epoch = briefOperationEpoch.current;
+    const generation = currentSessionGeneration();
+    const id = brief.id;
     setRunBusy(true);
     setRunError(null);
     try {
-      const result = await briefmintApi.runBrief(brief.id);
-      setBrief(result.brief);
+      const result = await briefmintApi.runBrief(id, address);
+      if (epoch === briefOperationEpoch.current && isCurrentSessionGeneration(generation)) setBrief(result.brief);
     } catch (e) {
-      setRunError(isApiError(e) ? `${e.code}: ${e.message}${e.retryable ? " (retryable)" : ""}` : "Could not start compilation. Retry.");
+      if (epoch === briefOperationEpoch.current && isCurrentSessionGeneration(generation)) {
+        setRunError(isApiError(e) ? `${e.code}: ${e.message}${e.retryable ? " (retryable)" : ""}` : "Could not start compilation. Retry.");
+        // A failed dispatched attempt is persisted before its error is returned.
+        // Refresh only the brief record so the UI shows the consumed attempt count.
+        try {
+          const current = await briefmintApi.getBrief(id, address);
+          if (epoch === briefOperationEpoch.current && isCurrentSessionGeneration(generation)) setBrief(current);
+        } catch { /* Keep the current view if the recovery read is unavailable. */ }
+      }
     } finally {
-      setRunBusy(false);
+      if (epoch === briefOperationEpoch.current) setRunBusy(false);
     }
   };
 
-  const selectedOpportunity = opportunities.find((o) => o.entityKey === selectedKey) ?? null;
+  // Opens a saved brief from the panel or a district house; same guards as the poll and run code.
+  const handleSelectBrief = async (id: string) => {
+    if (!address) return;
+    const epoch = briefOperationEpoch.current;
+    const generation = currentSessionGeneration();
+    try {
+      const loaded = await briefmintApi.getBrief(id, address);
+      if (epoch === briefOperationEpoch.current && isCurrentSessionGeneration(generation)) setBrief(loaded);
+    } catch {
+      /* Keep the current view if the read is unavailable. */
+    }
+  };
+
+  const openExplainer = (id: ExplainerId) => {
+    setExplainerId(id);
+    setTab("explain");
+  };
+  const handleTabChange = (t: PanelTab) => {
+    setTab(t);
+    if (t !== "explain") setExplainerId(null);
+  };
+
+  const firstReadDone = lastRefresh !== null || oppError !== null;
+  const freshness: BriefFreshness = oppError && opportunities.length === 0 ? "unavailable" : oppStale ? "stale" : "fresh";
   const scene = briefStateToScene(brief);
   const approved = brief?.review.status === "approved" && brief.review.approval?.draftRevision === brief.draftRevision;
 
@@ -171,7 +249,7 @@ export default function HomePage() {
   const openCount = opportunities.filter((o) => o.status === "open").length;
   const idleHint =
     brief?.executionStatus === "running"
-      ? "Compiling — polling the saved record"
+      ? "Compiling, polling the saved record"
       : brief?.publication.status === "pending"
         ? "Waiting for on-chain confirmation"
         : "Follow the worker to continue";
@@ -181,7 +259,7 @@ export default function HomePage() {
 
   return (
     <div className="city-page">
-      <h1 className="sr-only">BriefMint — private notes to public opportunity</h1>
+      <h1 className="sr-only">BriefMint, private notes to public opportunity</h1>
       <CityScene
         selected={building}
         onSelect={setBuilding}
@@ -196,37 +274,69 @@ export default function HomePage() {
             <p className="notice notice-warn" role="status">Some BriefMint services are not ready: intake, compilation or Arkiv may be unavailable.</p>
           ) : null
         }
-        consoleTop={
-          <div className="console-top">
-            <div className="console-title">
-              <span className="console-name">BriefMint</span>
-              <span className="console-sub">Tool City · private notes → public opportunity</span>
-            </div>
-            <WalletControls />
-            <NavLinks />
-          </div>
-        }
+        district={{
+          briefs: address && briefsQ.data ? briefSummaries : null,
+          brief,
+          opportunities: firstReadDone ? opportunities : null,
+          freshness,
+          signedIn: Boolean(address),
+          selectedId: tab === "opportunities" ? selectedKey : brief?.id ?? null,
+          onSelectBrief: (id) => {
+            void handleSelectBrief(id);
+            handleTabChange("briefs");
+          },
+          onSelectOpportunity: (key) => {
+            setSelectedKey(key);
+            handleTabChange("opportunities");
+          },
+          onOpenTab: handleTabChange,
+        }}
+        explainer={{ selected: explainerId, onOpen: openExplainer }}
       >
-        <CityPanel
-          building={building}
-          brief={brief}
+        <BriefMintGlassPanel
+          key={address ?? "logged-out"}
+          variant="panel"
+          tab={tab}
+          onTabChange={handleTabChange}
+          session={{ address, loading: sessionQ.loading }}
+          config={briefConfig}
+          configError={briefConfigError}
           briefs={briefSummaries}
           briefsLoading={briefsLoading}
+          brief={brief}
+          onSelectBrief={(id) => void handleSelectBrief(id)}
+          intake={<BriefIntakeForm onCreated={(b) => { setBrief(b); setBuilding("studio"); }} />}
+          briefActions={
+            brief ? (
+              <>
+                <ReleaseDesk key={`${brief.id}:${brief.draftRevision}`} brief={brief} onSaved={setBrief} />
+                <OpportunityPublisher brief={brief} onSaved={setBrief} rpcLabel="Rabdi 7794095" />
+                <BriefEvidence brief={brief} />
+                <Link className="bm-btn" href={`/briefs/${brief.id}`}>Open full brief</Link>
+              </>
+            ) : null
+          }
+          nextAction={nextAction}
+          runError={runError}
           opportunities={opportunities}
           opportunitiesLoading={oppLoading}
           opportunitiesError={oppError}
           opportunitiesStale={oppStale}
           lastRefresh={lastRefresh}
-          onRefreshOpportunities={() => void loadOpportunities(oppFilters)}
-          oppFilters={oppFilters}
-          onOppFiltersChange={handleFiltersChange}
-          selectedOpportunity={selectedOpportunity}
+          filters={oppFilters}
+          onFiltersChange={handleFiltersChange}
+          onRefresh={() => void loadOpportunities(oppFilters)}
+          selectedOpportunityKey={selectedKey}
           onSelectOpportunity={(o) => setSelectedKey(o.entityKey)}
-          onBriefCreated={(b) => { setBrief(b); setBuilding("studio"); }}
-          onBriefChange={setBrief}
-          onRunBrief={handleRun}
-          runBusy={runBusy}
-          runError={runError}
+          opportunityTools={<OpportunityReader />}
+          explain={<ExplainerPanel explainerId={explainerId} onClose={() => setExplainerId(null)} onSelect={openExplainer} />}
+          headerExtra={
+            <div className="console-top">
+              <NavLinks />
+              <WalletControls />
+            </div>
+          }
+          fixture={devFixturesEnabled()}
         />
       </CityScene>
     </div>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" fill="none">
+  <title>BriefMint — Private ideas. Public opportunities.</title>
+  <desc>Workflow illustration: private notes become a structured 0G draft, receive owner approval, and are published on Arkiv.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1280" y2="560" gradientUnits="userSpaceOnUse"><stop stop-color="#101B20"/><stop offset="1" stop-color="#081411"/></linearGradient>
+    <linearGradient id="mint" x1="770" y1="90" x2="1150" y2="390" gradientUnits="userSpaceOnUse"><stop stop-color="#98F5CE"/><stop offset="1" stop-color="#328A70"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#43C797" stop-opacity=".17"/><stop offset="1" stop-color="#43C797" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" stroke="#A0E9CE" stroke-opacity=".035"/></pattern>
+  </defs>
+  <rect width="1280" height="560" rx="24" fill="url(#background)"/>
+  <rect width="1280" height="560" rx="24" fill="url(#grid)"/>
+  <ellipse cx="1015" cy="242" rx="300" ry="265" fill="url(#glow)"/>
+  <g font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <rect x="64" y="56" width="38" height="38" rx="10" fill="#9AF2CD"/>
+    <path d="M76 66h12l5 5v13H76V66Z" stroke="#12362B" stroke-width="2" stroke-linejoin="round"/><path d="M88 66v6h5M80 77h9M80 81h6" stroke="#12362B" stroke-width="2"/>
+    <text x="116" y="83" fill="#E9F7F0" font-size="25" font-weight="700" letter-spacing="1">BRIEFMINT</text>
+    <text x="64" y="137" fill="#88A59A" font-size="12" font-weight="600" letter-spacing="2.5">ETHGLOBAL MUMBAI / 2026</text>
+    <text x="60" y="226" fill="#F2F8F4" font-size="66" font-weight="700" letter-spacing="-2.4">Private ideas.</text>
+    <text x="60" y="303" fill="#9AF2CD" font-size="66" font-weight="700" letter-spacing="-2.4">Public opportunities.</text>
+    <text x="64" y="350" fill="#A6BBB1" font-size="19">AI-assisted drafting. Human approval. Wallet-owned publishing.</text>
+    <g transform="translate(875 106)">
+      <path d="m0 140 143-82 157 90-143 83L0 140Z" fill="#122D25" stroke="#34654F"/>
+      <path d="m0 140 157 91v48L0 188v-48Z" fill="#0B211A" stroke="#34654F"/>
+      <path d="m157 231 143-83v48l-143 83v-48Z" fill="#153D2D" stroke="#34654F"/>
+      <path d="m58 104 86-50 93 54-86 50-93-54Z" fill="url(#mint)"/>
+      <path d="m58 104 93 54v53l-93-54v-53Z" fill="#215540"/>
+      <path d="m151 158 86-50v53l-86 50v-53Z" fill="#3B8E6B"/>
+      <path d="m95 84 49-28 57 33-49 28-57-33Z" fill="#D3FAE6"/>
+      <path d="m112 84 20-12m-8 21 33-19m-21 28 33-19" stroke="#40906B" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="243" cy="41" r="27" fill="#9AF2CD"/>
+      <path d="m231 41 8 8 16-17" stroke="#123A2B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M245 79v26" stroke="#9AF2CD" stroke-opacity=".5" stroke-dasharray="3 5"/>
+    </g>
+    <path d="M64 394H1216" stroke="#254136"/>
+    <g>
+      <rect x="64" y="420" width="256" height="84" rx="12" fill="#14251F" stroke="#2A4439"/>
+      <text x="82" y="447" fill="#7E9E8E" font-size="11" letter-spacing="1.5">01 / PREPARE</text><text x="82" y="479" fill="#E7F2EB" font-size="20" font-weight="600">Private notes</text>
+      <path d="m331 456 7 7-7 7" stroke="#6A9C84" stroke-width="2"/>
+      <rect x="352" y="420" width="256" height="84" rx="12" fill="#14251F" stroke="#2A4439"/>
+      <text x="370" y="447" fill="#7E9E8E" font-size="11" letter-spacing="1.5">02 / GENERATE WITH 0G</text><text x="370" y="479" fill="#E7F2EB" font-size="20" font-weight="600">Structured draft</text>
+      <path d="m619 456 7 7-7 7" stroke="#6A9C84" stroke-width="2"/>
+      <rect x="640" y="420" width="256" height="84" rx="12" fill="#14251F" stroke="#2A4439"/>
+      <text x="658" y="447" fill="#7E9E8E" font-size="11" letter-spacing="1.5">03 / REVIEW</text><text x="658" y="479" fill="#E7F2EB" font-size="20" font-weight="600">Owner approval</text>
+      <path d="m907 456 7 7-7 7" stroke="#6A9C84" stroke-width="2"/>
+      <rect x="928" y="420" width="288" height="84" rx="12" fill="#1D3A2C" stroke="#64AE87"/>
+      <text x="946" y="447" fill="#A5D6BA" font-size="11" letter-spacing="1.5">04 / PUBLISH ON ARKIV</text><text x="946" y="479" fill="#DAF9E7" font-size="20" font-weight="600">Public opportunity</text>
+    </g>
+  </g>
+</svg>

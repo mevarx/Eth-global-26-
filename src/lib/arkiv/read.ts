@@ -1,4 +1,4 @@
-// Server-neutral Arkiv workshop reads — Agent B owned.
+// Server-neutral Arkiv workshop reads: Agent B owned.
 // No React hooks, no wallet state, no browser globals, no secrets, no import from write.ts,
 // so Agent A can import this module server-side to validate new jobs.
 //

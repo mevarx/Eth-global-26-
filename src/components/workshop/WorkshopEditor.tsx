@@ -43,7 +43,7 @@ export default function WorkshopEditor({ existing, busy, error, onPublish, onUpd
       <h3>{existing ? "Update workshop listing" : "Publish workshop listing"}</h3>
       <p className="tc-muted">
         Only title, description and active status are editable. Checkout address, service, language pair and
-        terms reference must match the configured service — there is no editable price.
+        terms reference must match the configured service, there is no editable price.
       </p>
       <div className="form-field">
         <label htmlFor="ws-title">Title</label>

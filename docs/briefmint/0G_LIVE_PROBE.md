@@ -1,6 +1,24 @@
-# BriefMint 0G live probe — operator gate
+> **Current status (7 November 2026 IST):** This engineering record retains historical instructions/checkpoints. For the integrated Next.js setup use the [README](../../README.md); for successful app generation and Arkiv create/read/discovery use [live evidence](../evidence/LIVE_DEMO.md). Earlier Vite-city, HTTP 502-only, no-publication and backend-branch claims are historical. Independent TEE proof and live update/close/expiry remain unverified; do not retry the original unknown R3 intent.
 
-Part 1 baseline: `3e26a65`. The existing guarded entry point is `scripts/briefmint-live-smoke.ts`; it is improved here rather than replaced. No credential file, Notes or keychain was opened during this work. No authenticated inference was executed.
+# BriefMint 0G live probe: operator gate
+
+Part 1 baseline: `3e26a65`. The existing guarded entry point is `scripts/briefmint-live-smoke.ts`; it is improved here rather than replaced. The operator reports that `.env.0g-smoke` is locally configured, ignored and permission-restricted. The assistant has not opened the file, read or printed the key, or made an authenticated request.
+
+## Latest operator-reported live evidence: 6 November 2026
+
+The operator reports one authorized standalone probe completed with HTTP 200 in 9,133 ms, valid structured output, 668 reported total tokens, request ID `077bd220-2efa-4bbd-bb1f-3b3964ff0038`, and returned model `0gm-1.0-35b-a3b`. Its status was `completed_evidence_incomplete`: `routerVerification` and `routingTier` were null. This overcomes the earlier HTTP 502 for this single probe, but it is not a BriefMint app generation and does not prove a debit amount or promotional-credit source. Independent provider-signature/signer/content verification remains unavailable in the implementation. No retry or second paid request is authorized by this update.
+
+The probe uses the same `ZERO_G_API_KEY`, `ZERO_G_MODEL_ID`, `ZERO_G_BASE_URL`, and `INFERENCE_TIMEOUT_MS` names consumed by `src/lib/server/env.ts` and `src/lib/server/brief-inference.ts`. The new `npm run dev:briefmint-0g` launcher passes `.env.0g-smoke` only to the server process; it does not run inference during startup. The API key is not `NEXT_PUBLIC_*`, and `next.config.ts` does not inline environment values. Keep the application quota empty until an operator sets a finite, explicit allowlist and dispatch budget. The `/api/briefs/:id/run` endpoint itself sends a billable request and must not be used without separate authorization.
+
+The current [Router response documentation](https://docs.0g.ai/developer-hub/building-on-0g/compute-network/router/features/chat-completions) documents `x_0g_trace.request_id`, `provider`, and billing, with `tee_verified` when `verify_tee: true`; it does not document a `routingTier` field. The [verification documentation](https://docs.0g.ai/developer-hub/building-on-0g/compute-network/router/features/verifiable-execution) says absent/null `tee_verified` means verification was not requested. Since this probe did request it, the missing flag remains unexplained and is correctly treated as incomplete, never as verified. For an independent check, the documented `@0gfoundation/0g-compute-ts-sdk` helper `broker.inference.processResponse(providerAddress, chatID)` needs the provider from the trace and `ZG-Res-Key` (or response `id`); it reads chain/provider evidence and does not require another inference. That independent check has not been implemented/run for this response.
+
+For a local server with the configured 0G process environment, from this repository root:
+
+```sh
+npm run dev:briefmint-0g -- --hostname 127.0.0.1 --port 3001
+```
+
+The app still needs ordinary local `APP_ORIGIN`, `SESSION_SECRET`, `DATABASE_PATH`, and (only when deliberately enabling compilation) finite `BRIEFMINT_*` quota settings from the ignored runtime environment. Starting the process and reading `/api/briefmint/config` are not inference. Do not place a key in `NEXT_PUBLIC_*`, Vite variables, browser storage, client source, logs, screenshots, or Git.
 
 ## Safe preflight
 
@@ -53,7 +71,7 @@ Clearing these exported names prevents stale shell values from overriding the ex
 - `failed`: configuration/catalog/inference/validation failed. Inspect only the sanitized phase/code, actual HTTP status, latency, attempted request count and allowlisted upstream identifiers. Success-body identifiers are retained when later structure/model validation fails. Provider error messages, response text, prompts, Authorization and credentials are never logged. Credential echoes are rejected before evidence or original bytes reach storage.
 - `routerReportedBillingNeurons` and reported token counts come from the response. `creditSource: unverified` and `promotionalCreditDebit.status: not_measured` mean the probe did not inspect an account balance or prove which pool paid. Do not translate Router cost into a claimed promotional debit. The operator must separately compare the intended pool's before/after usage and transaction timestamps before recording that claim; unknown debit stays unknown. Token limits and dispatch counts do not prove a currency cap.
 
-The earlier operator request returned HTTP 502 / `PROVIDER_UNAVAILABLE` after 1,827 ms. `mayHaveBeenBilled=true` means uncertainty; it is not a measured debit. Its root cause and successful private capacity remain unresolved. Check the operator's usage history before authorizing another request. The new diagnostics cannot recover identifiers omitted from that historical response.
+The earlier operator request returned HTTP 502 / `PROVIDER_UNAVAILABLE` after 1,827 ms. That failure was followed by the single successful operator-reported response above. `mayHaveBeenBilled=true` means uncertainty; it is not a measured debit. The successful request establishes one valid structured response from that run, not ongoing capacity, actual debit, credit source, or independent verification. Check the operator's usage history before any future separately authorized request. The new diagnostics cannot recover identifiers omitted from the historical 502 response.
 
 ## Verification boundary
 

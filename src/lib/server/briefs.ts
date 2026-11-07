@@ -4,6 +4,7 @@ import {
   briefIdSchema, briefViewSchema, createBriefRequestSchema, splitBriefNotes, assertBriefDeadline,
   saveBriefDraftRequestSchema, approveBriefRequestSchema, validateBriefApproval,
   listBriefsQuerySchema, exportBriefQuerySchema, projectPublicOpportunity, validatePublicationApproval, canonicalPublicJson, BriefContractConflict,
+  publicationCopyRequestSchema,
   type BriefView, type BriefSummary,
 } from "../shared/briefs";
 import { normalizeAddress } from "../shared/validation";
@@ -47,6 +48,43 @@ export class BriefService {
     return brief;
   }
   get(owner: string, id: string) { return storedBriefView(getBrief(this.db, owner, id)); }
+  async publicationCopy(owner: string, id: string, value: unknown): Promise<BriefView> {
+    const request = publicationCopyRequestSchema.parse(value);
+    const source = getBrief(this.db, owner, id);
+    if (source.publicationCopy || source.publication.confirmed || source.publication.pending?.state !== "unknown"
+      || source.publication.pending.transactionHash !== null) {
+      throw new ServiceError("PUBLICATION_CONFLICT", 409, "A demo copy requires an unresolved original create with no known transaction hash.");
+    }
+    const payload = await validatePublicationApproval(source, request.expectedRevision, request.publicPayloadHash);
+    deadline(payload.deadline, this.now());
+    return transaction(this.db, () => {
+      if (JSON.stringify(getBrief(this.db, owner, id)) !== JSON.stringify(source)) throw conflict();
+      // One copy per source, including repeated clicks/reloads. The old intent
+      // and its uncertainty lock remain unchanged in their original records.
+      const existing = this.db.prepare("SELECT view_json FROM briefs WHERE owner=? AND json_extract(view_json,'$.publicationCopy.sourceBriefId')=? LIMIT 1")
+        .get(owner.toLowerCase(), id) as { view_json: string } | undefined;
+      if (existing) {
+        const copy = briefViewSchema.parse(JSON.parse(existing.view_json));
+        if (copy.publicationCopy?.sourceRevision !== request.expectedRevision
+          || copy.publicationCopy.sourceApprovalHash !== request.publicPayloadHash) throw conflict();
+        return storedBriefView(copy);
+      }
+      const copyId = `0x${randomBytes(32).toString("hex")}`;
+      const timestamp = new Date(this.now()).toISOString();
+      const draft = structuredClone(source.editedDraft!);
+      const suffix = ` [demo ${randomBytes(4).toString("hex")}]`;
+      draft.parameters.title = draft.parameters.title.slice(0, 120 - suffix.length) + suffix;
+      const copy = briefViewSchema.parse({ ...structuredClone(source), id: copyId, editedDraft: draft,
+        attemptsUsed: 0, retryEligible: false, draftRevision: 1, error: null,
+        review: { status: "unreviewed", approval: null },
+        publication: { status: "unpublished", freshness: "unavailable", confirmed: null, pending: null },
+        publicationCopy: { sourceBriefId: id, sourceRevision: source.draftRevision,
+          sourceApprovalHash: request.publicPayloadHash, duplicateRiskAcknowledged: true }, createdAt: timestamp, updatedAt: timestamp });
+      this.db.prepare("INSERT INTO briefs(id,owner,view_json,status,attempts_used,created_at) VALUES(?,?,?,?,0,?)")
+        .run(copy.id, owner.toLowerCase(), JSON.stringify(copy), copy.executionStatus, timestamp);
+      return copy;
+    });
+  }
   list(owner: string, input: unknown) {
     const query = listBriefsQuerySchema.parse(input);
     const cursor = query.beforeId ? getBrief(this.db, owner, query.beforeId) : null;
@@ -98,10 +136,10 @@ export class BriefService {
         || JSON.stringify(current.editedDraft) !== JSON.stringify(brief.editedDraft)) throw conflict();
       return { filename: `brief-public-r${payload.revision}.${format}`, mediaType: format === "json" ? "application/json" : "text/plain",
         content: format === "json" ? canonicalPublicJson(payload)
-          : [`PUBLIC BRIEFMINT EXPORT — approved revision ${payload.revision}; advertised budget is unfunded`, canonicalPublicJson(payload)].join("\n\n") };
+          : [`PUBLIC BRIEFMINT EXPORT: approved revision ${payload.revision}; advertised budget is unfunded`, canonicalPublicJson(payload)].join("\n\n") };
     }
     return { filename: `brief-${brief.id}.${format}`, mediaType: format === "json" ? "application/json" : "text/plain",
-      content: format === "json" ? JSON.stringify(storedBriefView(brief), null, 2) : ["PRIVATE BRIEFMINT EXPORT — contains source and evidence",
+      content: format === "json" ? JSON.stringify(storedBriefView(brief), null, 2) : ["PRIVATE BRIEFMINT EXPORT: contains source and evidence",
         "Private notes", brief.inputSegments.map(s => s.text).join("\n\n"), "Original model result", JSON.stringify(brief.immutableModelResult, null, 2),
         "Saved candidate", JSON.stringify(brief.editedDraft, null, 2), "Evidence", JSON.stringify(brief.evidence, null, 2)].join("\n\n") };
   }

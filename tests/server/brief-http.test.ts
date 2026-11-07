@@ -44,13 +44,39 @@ async function login(runtime: BriefRuntime, wallet = account) {
 async function call(runtime: BriefRuntime, action: BriefApiName, cookie?: string, data?: unknown, id?: string, suffix = "") {
   const endpoint = briefApi[action];
   return handleBrief(action, new Request(origin + endpoint.path.replace(":id", id ?? "") + suffix, {
-    method: endpoint.method, headers: { ...(cookie ? { Cookie: cookie } : {}), Origin: origin, "Content-Type": "application/json" },
+    method: endpoint.method, headers: { ...(cookie ? { Cookie: cookie, "x-briefmint-owner": runtime.auth.session(new Request(origin, { headers: { Cookie: cookie } })).address } : {}), Origin: origin, "Content-Type": "application/json" },
     ...(endpoint.method !== "GET" ? { body: JSON.stringify(data ?? {}) } : {}),
   }), id, runtime);
 }
 afterEach(() => { for (const db of databases.splice(0)) db.close(); for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
 describe("BriefMint API and private lifecycle", () => {
+  it("creates an authenticated duplicate-risk publication copy without inference, and leaves the old unknown intent intact", async () => {
+    const reader: PublicationReader = { currentBlock: async () => ({ number: "100", timestamp: String(now / 1000), blockTimeSeconds: 12 }),
+      get: async () => null, list: async () => ({ records: [], nextCursor: null }),
+      transaction: async () => ({ status: "pending", chainId: 7794095, signer: null, entityKeys: [], blockNumber: null }) };
+    const runtime = setup(reader); const cookie = await login(runtime);
+    const created = await call(runtime, "create", cookie, { notes: "Synthetic private task", publicParameters: parameters });
+    const source = (await created.json()).data;
+    const compiled = (await (await call(runtime, "run", cookie, {}, source.id)).json()).data;
+    const hash = await hashPublicOpportunity(projectPublicOpportunity(compiled.editedDraft, compiled.draftRevision));
+    await call(runtime, "approve", cookie, { expectedRevision: compiled.draftRevision, publicPayloadHash: hash }, source.id);
+    const intentId = `0x${"8".repeat(64)}`;
+    expect((await call(runtime, "prepare", cookie, { intentId, expectedRevision: compiled.draftRevision, publicPayloadHash: hash, operation: "create" }, source.id)).status).toBe(200);
+    expect((await call(runtime, "reconcile", cookie, { intentId, transactionHash: null, entityKey: null }, source.id)).status).toBe(202);
+    const before = runtime.briefs.get(account.address, source.id);
+    const copyRequest = { expectedRevision: compiled.draftRevision, publicPayloadHash: hash, acknowledgeDuplicateRisk: true };
+    expect((await call(runtime, "publicationCopy", undefined, copyRequest, source.id)).status).toBe(401);
+    expect((await call(runtime, "publicationCopy", await login(runtime, other), copyRequest, source.id)).status).toBe(404);
+    expect((await call(runtime, "publicationCopy", cookie, { ...copyRequest, acknowledgeDuplicateRisk: false }, source.id)).status).toBe(400);
+    const response = await call(runtime, "publicationCopy", cookie, copyRequest, source.id);
+    expect(response.status).toBe(200); const copy = (await response.json()).data;
+    expect(copy).toMatchObject({ executionStatus: "ready", attemptsUsed: 0, review: { status: "unreviewed" }, publication: { status: "unpublished" }, publicationCopy: { sourceBriefId: source.id } });
+    expect((await (await call(runtime, "publicationCopy", cookie, copyRequest, source.id)).json()).data.id).toBe(copy.id);
+    expect((await (await call(runtime, "run", cookie, {}, copy.id)).json()).data.attemptsUsed).toBe(0);
+    expect(runtime.db.prepare("SELECT COUNT(*) AS count FROM brief_quota").get()).toMatchObject({ count: 1 });
+    expect(runtime.briefs.get(account.address, source.id)).toEqual(before);
+  });
   it("uses explicit sign-in chain policy, retained legacy default, single-use signatures and cookie security", async () => {
     const runtime = setup(); const challenge = runtime.auth.challenge(account.address, "briefmint");
     expect(challenge.message).toContain("Chain ID: 7794095"); expect(challenge.message).toContain("not a payment or publication authorization");
@@ -71,6 +97,22 @@ describe("BriefMint API and private lifecycle", () => {
     runtime.config = async () => ({ ...config, unexpectedPrivateField: "PRIVATE CANARY" });
     const rejected = await call(runtime, "config");
     expect(rejected.status).toBe(500); expect(await rejected.text()).not.toContain("PRIVATE CANARY");
+  });
+  it("rejects missing or cross-tab mismatched owner bindings before private reads and writes", async () => {
+    const runtime = setup(); const cookie = await login(runtime);
+    const initial = runtime.briefs.list(account.address, {}).briefs.length;
+    for (const owner of [undefined, other.address, "malformed"]) {
+      for (const action of ["list", "create"] as const) {
+        const response = await handleBrief(action, new Request(origin + "/api/briefs", {
+          method: briefApi[action].method,
+          headers: { Cookie: cookie, Origin: origin, "Content-Type": "application/json", ...(owner ? { "x-briefmint-owner": owner } : {}) },
+          ...(action === "create" ? { body: JSON.stringify({ notes: "must never be stored", publicParameters: parameters }) } : {}),
+        }), undefined, runtime);
+        expect(response.status).toBe(409);
+        expect((await response.json()).error.code).toBe("SESSION_OWNER_MISMATCH");
+      }
+    }
+    expect(runtime.briefs.list(account.address, {}).briefs).toHaveLength(initial);
   });
   it("creates private records and returns identical wrong-owner/missing errors", async () => {
     const runtime = setup(); const cookie = await login(runtime); const otherCookie = await login(runtime, other);

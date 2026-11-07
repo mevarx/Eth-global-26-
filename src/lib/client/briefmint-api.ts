@@ -1,4 +1,4 @@
-// Typed BriefMint fetch wrapper — Agent B owned, client-safe.
+// Typed BriefMint fetch wrapper: Agent B owned, client-safe.
 // Every call goes through the canonical `briefApi` registry in
 // ../shared/briefmint (frozen v1.2): method, path, request and response
 // shapes are validated with zod. Failures throw ApiError {status, code,
@@ -31,15 +31,21 @@ function pathFor<K extends BriefApiName>(name: K, id?: string, query?: Record<st
 async function callBriefApi<K extends BriefApiName>(
   name: K,
   input: BriefApiRequest<K>,
-  options: { id?: string; query?: Record<string, string | undefined> } = {},
+  options: { id?: string; query?: Record<string, string | undefined>; owner?: string | null } = {},
 ): Promise<{ data: Success<K>["data"]; status: number }> {
   const endpoint = briefApi[name];
+  if (name !== "config" && !/^0x[0-9a-fA-F]{40}$/.test(options.owner ?? "")) {
+    throw new ApiError(401, "UNAUTHENTICATED", "Connect the owner wallet and sign in before accessing private briefs.", false);
+  }
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (name !== "config") headers["x-briefmint-owner"] = options.owner!;
+  if (endpoint.method !== "GET") headers["content-type"] = "application/json";
   let res: Response;
   try {
     res = await fetch(pathFor(name, options.id, options.query), {
       method: endpoint.method,
       credentials: "same-origin",
-      headers: endpoint.method === "GET" ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" },
+      headers,
       body: endpoint.method === "GET" ? undefined : JSON.stringify(input),
     });
   } catch (e) {
@@ -69,36 +75,42 @@ export const briefmintApi = {
   config() {
     return callBriefApi("config", {}).then((r) => r.data);
   },
-  listBriefs(beforeId?: string) {
-    return callBriefApi("list", {}, beforeId ? { query: { beforeId } } : {}).then((r) => r.data);
+  listBriefs(owner: string | null, beforeId?: string) {
+    return callBriefApi("list", {}, { owner, query: beforeId ? { beforeId } : undefined }).then((r) => r.data);
   },
-  createBrief(req: BriefApiRequest<"create">) {
-    return callBriefApi("create", req).then((r) => r.data);
+  createBrief(req: BriefApiRequest<"create">, owner: string | null) {
+    return callBriefApi("create", req, { owner }).then((r) => r.data);
   },
-  getBrief(id: string) {
-    return callBriefApi("get", {}, { id }).then((r) => r.data);
+  getBrief(id: string, owner: string | null) {
+    return callBriefApi("get", {}, { id, owner }).then((r) => r.data);
   },
-  async runBrief(id: string): Promise<RunBriefResult> {
-    const r = await callBriefApi("run", {}, { id });
+  async runBrief(id: string, owner: string | null): Promise<RunBriefResult> {
+    const r = await callBriefApi("run", {}, { id, owner });
     return { brief: r.data, pending: r.status === 202 };
   },
-  saveDraft(id: string, req: BriefApiRequest<"saveDraft">) {
-    return callBriefApi("saveDraft", req, { id }).then((r) => r.data);
+  saveDraft(id: string, req: BriefApiRequest<"saveDraft">, owner: string | null) {
+    return callBriefApi("saveDraft", req, { id, owner }).then((r) => r.data);
   },
-  approveBrief(id: string, req: BriefApiRequest<"approve">) {
-    return callBriefApi("approve", req, { id }).then((r) => r.data);
+  approveBrief(id: string, req: BriefApiRequest<"approve">, owner: string | null) {
+    return callBriefApi("approve", req, { id, owner }).then((r) => r.data);
   },
-  preparePublication(id: string, req: BriefApiRequest<"prepare">): Promise<PublicationIntent> {
-    return callBriefApi("prepare", req, { id }).then((r) => r.data);
+  preparePublication(id: string, req: BriefApiRequest<"prepare">, owner: string | null): Promise<PublicationIntent> {
+    return callBriefApi("prepare", req, { id, owner }).then((r) => r.data);
   },
-  async reconcilePublication(id: string, req: BriefApiRequest<"reconcile">): Promise<ReconcileBriefResult> {
-    const r = await callBriefApi("reconcile", req, { id });
+  copyPublication(id: string, req: BriefApiRequest<"publicationCopy">, owner: string | null) {
+    return callBriefApi("publicationCopy", req, { id, owner }).then((r) => r.data);
+  },
+  async reconcilePublication(id: string, req: BriefApiRequest<"reconcile">, owner: string | null): Promise<ReconcileBriefResult> {
+    const r = await callBriefApi("reconcile", req, { id, owner });
     return { brief: r.data, pending: r.status === 202 };
   },
-  refreshPublication(id: string) {
-    return callBriefApi("refresh", {}, { id }).then((r) => r.data);
+  refreshPublication(id: string, owner: string | null) {
+    return callBriefApi("refresh", {}, { id, owner }).then((r) => r.data);
   },
-  exportBrief(id: string, query: { format: "txt" | "json"; audience?: "private" | "public" }) {
-    return callBriefApi("export", query, { id }).then((r) => r.data);
+  exportBrief(id: string, query: { format: "txt" | "json"; audience?: "private" | "public" }, owner: string | null) {
+    return callBriefApi("export", query, {
+      id, owner,
+      query: { format: query.format, audience: query.audience },
+    }).then((r) => r.data);
   },
 };

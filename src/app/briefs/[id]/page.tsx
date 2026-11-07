@@ -1,5 +1,5 @@
 "use client";
-// Brief detail: private intake state, deliberate compilation (POST run — user
+// Brief detail: private intake state, deliberate compilation (POST run, user
 // action only, never on mount), structured review with saved revisions, exact
 // public preview + approval, owner-signed publication with reconciliation,
 // read-only chain refresh, and honest evidence. Polls while running/pending;
@@ -15,34 +15,37 @@ import ReleaseDesk from "@/components/briefs/ReleaseDesk";
 import { isApiError } from "@/lib/client/briefmint-api";
 import { briefmintApi } from "@/lib/client/briefmint-api";
 import { useBrief, useRefreshPublication } from "@/lib/client/use-briefs";
+import { useSession } from "@/lib/client/use-session";
 
 export default function BriefDetailPage() {
   const params = useParams();
   const raw = (params as Record<string, string | string[]>).id;
   const id = Array.isArray(raw) ? raw[0] : raw;
   const valid = typeof id === "string" && id.length > 0;
-  const briefQ = useBrief(valid ? id : undefined);
+  const sessionQ = useSession();
+  const briefQ = useBrief(valid ? id : undefined, sessionQ.address);
   const refreshPub = useRefreshPublication();
   const [runBusy, setRunBusy] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
   const handleRun = async () => {
-    if (!briefQ.data) return;
+    if (!briefQ.data || !sessionQ.address) return;
     setRunBusy(true);
     setRunError(null);
     try {
-      const result = await briefmintApi.runBrief(briefQ.data.id);
+      const result = await briefmintApi.runBrief(briefQ.data.id, sessionQ.address);
       await briefQ.refetch();
       void result;
     } catch (e) {
       setRunError(isApiError(e) ? `${e.code}: ${e.message}${e.retryable ? " (retryable)" : ""}` : "Could not start compilation. Retry.");
+      try { await briefQ.refetch(); } catch { /* Keep the last saved brief view. */ }
     } finally {
       setRunBusy(false);
     }
   };
 
   const handleRefresh = async () => {
-    if (!briefQ.data) return;
+    if (!briefQ.data || !sessionQ.address) return;
     setRunError(null);
     try {
       await refreshPub.mutateAsync(briefQ.data.id);
@@ -55,6 +58,8 @@ export default function BriefDetailPage() {
   let body: React.ReactNode;
   if (!valid) {
     body = <p className="error" role="alert">BAD_INPUT: invalid brief id.</p>;
+  } else if (!sessionQ.address) {
+    body = <p className="notice">Connect the project-owner wallet and sign in to open this brief.</p>;
   } else if (briefQ.isLoading) {
     body = <p className="tc-muted">Loading brief…</p>;
   } else if (briefQ.error) {
@@ -64,7 +69,7 @@ export default function BriefDetailPage() {
     } else if (isApiError(e) && e.status === 404) {
       body = <p className="error" role="alert">NOT_FOUND: no such brief for this owner.</p>;
     } else if (isApiError(e) && (e.status === 503 || e.code === "SERVICE_UNAVAILABLE")) {
-      body = <p className="notice" role="status">BriefMint backend unavailable (503) — the saved brief cannot be reopened yet.</p>;
+      body = <p className="notice" role="status">BriefMint backend unavailable (503), the saved brief cannot be reopened yet.</p>;
     } else {
       body = <p className="error" role="alert">{isApiError(e) ? `${e.code}: ${e.message}` : "Could not load the brief."}</p>;
     }
@@ -87,7 +92,7 @@ export default function BriefDetailPage() {
         <div className="card">
           <h2>Private notes (owner-only, immutable after dispatch)</h2>
           {brief.inputSegments.map((s) => (
-            <p key={s.id}><span className="tc-mono tc-muted">{s.id}</span> — {s.text}</p>
+            <p key={s.id}><span className="tc-mono tc-muted">{s.id}</span>, {s.text}</p>
           ))}
         </div>
         {canStart && (
@@ -104,7 +109,7 @@ export default function BriefDetailPage() {
           <BriefReview brief={brief} onSaved={() => void briefQ.refetch()} />
         </div>
         <div className="card">
-          <h2>Release Desk — approve exactly what publishes</h2>
+          <h2>Release Desk, approve exactly what publishes</h2>
           <ReleaseDesk key={`${brief.id}:${brief.draftRevision}`} brief={brief} onSaved={() => void briefQ.refetch()} />
         </div>
         <div className="card">
@@ -114,7 +119,7 @@ export default function BriefDetailPage() {
               {refreshPub.isPending ? "Refreshing…" : "Refresh chain observation"}
             </button>
           </div>
-          {approved && <p className="tc-muted">Approved r{brief.draftRevision} — refresh re-reads the confirmed entity without signing or compiling.</p>}
+          {approved && <p className="tc-muted">Approved r{brief.draftRevision}, refresh re-reads the confirmed entity without signing or compiling.</p>}
         </div>
         <BriefEvidence brief={brief} />
       </>
@@ -123,10 +128,14 @@ export default function BriefDetailPage() {
 
   return (
     <AppShell>
-      <div className="tc-page">
-        <p><Link href="/briefs">← My Briefs</Link></p>
-        <h1>Brief detail</h1>
-        {body}
+      <div className="bm-dash-page">
+        <header className="bm-glass bm-glass--text bm-dash-panel">
+          <p><Link href="/briefs">← My Briefs</Link></p>
+          <h1>Brief detail</h1>
+        </header>
+        <section className="bm-glass bm-glass--text bm-dash-panel" aria-label="Brief">
+          {body}
+        </section>
       </div>
     </AppShell>
   );

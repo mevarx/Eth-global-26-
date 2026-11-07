@@ -1,4 +1,4 @@
-// BriefMint UI helpers — presentation-only. Canonical validation, projection
+// BriefMint UI helpers: presentation-only. Canonical validation, projection
 // and hashing live in ./briefs.ts; import those directly. Nothing here is a
 // second DTO or a parallel contract.
 import { BRIEF_LIMITS } from "./briefs";

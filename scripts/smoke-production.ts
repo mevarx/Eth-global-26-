@@ -86,7 +86,7 @@ try {
   const briefChallenge = await (await fetch(`${base}/api/auth/challenge?address=${account.address}&purpose=briefmint`)).json();
   assert.match(briefChallenge.data.message, /Chain ID: 7794095/);
   assert.equal((await fetch(`${base}/api/auth/challenge?address=${account.address}&purpose=briefmint&chainId=1874`)).status, 400);
-  const headers = { Cookie: cookie, Origin: origin, "Content-Type": "application/json" };
+  const headers = { Cookie: cookie, "x-briefmint-owner": account.address, Origin: origin, "Content-Type": "application/json" };
   const created = await fetch(`${base}/api/briefs`, { method: "POST", headers, body: JSON.stringify({
     notes: "Harmless private production smoke notes.",
     publicParameters: { title: "Synthetic public task", summary: "A local smoke sample", category: "writing", language: "en",

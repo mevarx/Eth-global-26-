@@ -28,10 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="statusbar">
         <span>BriefMint · ETHGlobal Mumbai</span>
         <span>Promotional credits · unfunded budgets · owner-signed Arkiv records</span>
-        <span className="statusbar-links">
-          <Link href="/jobs">Jobs (legacy)</Link>
-          <Link href="/merchant">Merchant (legacy)</Link>
-        </span>
+        <span className="statusbar-links">Private-to-public briefs · no checkout</span>
       </footer>
     </div>
   );

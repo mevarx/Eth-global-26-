@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +8,7 @@ import { BriefRunner, reconcileExpiredBriefLeases } from "../../src/lib/server/b
 import { createBriefInferenceProvider, type BriefInferenceProvider, type BriefInferenceResult } from "../../src/lib/server/brief-inference";
 import { getBriefQuotaPolicy, type QuotaPolicy } from "../../src/lib/server/quota";
 import { ServiceError } from "../../src/lib/server/errors";
+import { createBriefRuntime } from "../../src/lib/server/brief-runtime";
 import type { ServerEnv } from "../../src/lib/server/env";
 import type { ModelResult, BriefView } from "../../src/lib/shared/briefs";
 
@@ -37,7 +38,7 @@ function close(db: Database) { db.close(); databases.delete(db); }
 function draft(db: Database, wallet = owner) { return new BriefService(db, () => now).create(wallet, { notes: "Create one illustration. PRIVATE TEST SOURCE.", publicParameters: parameters }); }
 function runner(db: Database, provider = good, quota: QuotaPolicy | null = policy, timeout = 1000) { return new BriefRunner(db, provider, quota, timeout, () => now); }
 function count(db: Database) { return (db.prepare("SELECT COUNT(*) AS count FROM brief_quota").get() as { count: number }).count; }
-afterEach(() => { for (const db of databases) db.close(); databases.clear(); for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { vi.unstubAllGlobals(); for (const db of databases) db.close(); databases.clear(); for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
 describe("BriefMint quota and durable execution", () => {
   it("requires explicit configured allowance; readiness failures consume no attempts", async () => {
@@ -119,7 +120,7 @@ describe("BriefMint quota and durable execution", () => {
       const db = database(); const brief = draft(db);
       const provider = { assertReady() {}, async compile() { return output; } } as BriefInferenceProvider;
       await expect(runner(db, provider).run(owner, brief.id)).rejects.toMatchObject({ code: "PROVIDER_FAILED" });
-      expect(getBrief(db, owner, brief.id)).toMatchObject({ executionStatus: "failed", immutableModelResult: null, evidence: null });
+      expect(getBrief(db, owner, brief.id)).toMatchObject({ executionStatus: "failed", attemptsUsed: 1, retryEligible: true, immutableModelResult: null, evidence: null });
       expect(count(db)).toBe(1);
     }
   });
@@ -154,6 +155,18 @@ describe("BriefMint private 0G adapter with local fetch doubles", () => {
     expect(JSON.parse(sent.body as string)).toMatchObject({ model: "test-model", stream: false, verify_tee: true, max_tokens: 3000 });
     expect(result.result).toEqual(model);
     expect(result.evidence).toMatchObject({ requestId: null, routerVerification: null, independentResponseVerification: "unavailable", checkedAt: null });
+  });
+  it("uses the previously successful JSON/no-thinking request mode in the real BriefMint runtime", async () => {
+    let sentBody: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", async (_url: string | URL | Request, init?: RequestInit) => {
+      sentBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return response(model, undefined, { model: env.modelId });
+    });
+    const db = database(); const brief = draft(db);
+    const rt = createBriefRuntime(db, env, { policy, now: () => now });
+    const result = await rt.runner.run(owner, brief.id);
+    expect(sentBody).toMatchObject({ model: env.modelId, max_tokens: 1200, response_format: { type: "json_object" }, chat_template_kwargs: { enable_thinking: false } });
+    expect(result.brief).toMatchObject({ executionStatus: "ready", attemptsUsed: 1, evidence: { routerVerification: null, independentResponseVerification: "unavailable" } });
   });
   it("captures actual reported identifiers without asserting independent verification", async () => {
     const output = await provider(async () => response(model, { request_id: "actual-test-request", trust_mode: "private", provider_address: owner, tee_verified: true }, { id: "completion-id", model: env.modelId })).compile(source, parameters);

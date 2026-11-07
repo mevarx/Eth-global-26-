@@ -5,9 +5,11 @@
 // Canonical bounds: notes 250 words / 5000 chars / 20 paragraphs; title ≤120
 // chars; summary ≤1000 chars; budget integer cents or null; https contact;
 // deadline future within 7 days.
+import { useSession } from "@/lib/client/use-session";
 import { useState } from "react";
 import { isApiError } from "@/lib/client/briefmint-api";
 import { briefmintApi } from "@/lib/client/briefmint-api";
+import { currentSessionGeneration, isCurrentSessionGeneration } from "@/lib/client/session-generation";
 import {
   BRIEF_LIMITS,
   privateNotesSchema,
@@ -25,13 +27,14 @@ interface BriefIntakeFormProps {
   onCreated: (brief: BriefView) => void;
 }
 
-const DEMO_NOTES = "Community launch notes (fixture — not live).\n\nKeep private details out of the public draft.";
+const DEMO_NOTES = "Community launch notes (fixture, not live).\n\nKeep private details out of the public draft.";
 
 function firstIssue(message: string): string {
   return message;
 }
 
 export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
+  const { address } = useSession();
   const [notes, setNotes] = useState("");
   const [category, setCategory] = useState<"writing" | "design">("writing");
   const [title, setTitle] = useState("");
@@ -73,11 +76,13 @@ export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
   const submit = async () => {
     setError(null);
     setUnavailable(false);
+    if (!address) { setError("Connect the owner wallet and sign in before saving private notes."); return; }
     if (clientError) {
       setError(clientError);
       return;
     }
     setBusy(true);
+    const generation = currentSessionGeneration();
     try {
       const brief = await briefmintApi.createBrief({
         notes: notes.trim(),
@@ -90,7 +95,8 @@ export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
           deadline: deadline.trim(),
           contactUrl: contactUrl.trim() ? contactUrl.trim() : null,
         },
-      });
+      }, address);
+      if (!isCurrentSessionGeneration(generation)) return;
       setNotes("");
       onCreated(brief);
     } catch (e) {
@@ -113,9 +119,9 @@ export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
         Rough notes stay private to you and the backend. Only approved public fields may be published.
       </p>
       <details className="hud-learn">
-        <summary>Learn more</summary>
+        <summary>About credits and privacy</summary>
         <p className="tc-muted">
-          Compilation is funded by promotional credits — no purchase, no bounty payout. Advertised budgets
+          Compilation is funded by promotional credits, no purchase, no bounty payout. Advertised budgets
           are unfunded: BriefMint never holds or moves funds. Source IDs and private details never leave
           the private brief; the public preview shows exactly what a publication would contain.
         </p>
@@ -123,7 +129,7 @@ export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
       <div className="form-field">
         <label htmlFor="brief-notes">Private notes (blank line = new segment)</label>
         <textarea id="brief-notes" aria-describedby="brief-notes-hint brief-notes-counts" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={busy} />
-        <p className="hud-hint" id="brief-notes-hint">Blank line starts a new segment. Keep private details out of the public fields below.</p>
+        <p className="field-help" id="brief-notes-hint">Blank line starts a new segment. Keep private details out of the public fields below.</p>
       </div>
       <div className="counts" id="brief-notes-counts">
         <span>Words: {words}/{BRIEF_LIMITS.maxWords}</span>
@@ -166,14 +172,14 @@ export default function BriefIntakeForm({ onCreated }: BriefIntakeFormProps) {
       {error && <p className="error" role="alert">{error}</p>}
       {unavailable && (
         <p className="notice" role="status">
-          BriefMint backend unavailable (503) — the intake service is not deployed yet. Nothing was saved; no fixture was substituted.
+          BriefMint backend unavailable (503), the intake service is not deployed yet. Nothing was saved; no fixture was substituted.
         </p>
       )}
       <div className="btn-row">
-        <button type="button" className="btn btn-primary" disabled={busy || !!clientError} onClick={submit}>
+        <button type="button" className="btn btn-primary" disabled={busy || !address || !!clientError} onClick={submit}>
           {busy ? "Saving…" : "Save private brief"}
         </button>
-        <button type="button" className="btn" disabled={busy} onClick={() => setNotes(DEMO_NOTES)} title="Fixture — never live evidence">
+        <button type="button" className="btn" disabled={busy} onClick={() => setNotes(DEMO_NOTES)} title="Fixture, never live evidence">
           Load demo notes (fixture)
         </button>
       </div>

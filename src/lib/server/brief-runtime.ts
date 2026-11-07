@@ -51,7 +51,12 @@ export function createBriefRuntime(db: Database, env: ServerEnv, options: {
   provider?: BriefInferenceProvider; policy?: QuotaPolicy | null; reader?: PublicationReader; now?: () => number;
 } = {}) {
   const now = options.now ?? Date.now;
-  const provider = options.provider ?? createBriefInferenceProvider(env);
+  // Match the successful guarded 0G probe: JSON mode, thinking disabled, and
+  // a bounded output. The app previously used a larger free-form request and
+  // then required JSON.parse(content), which could surface only as PROVIDER_FAILED.
+  const provider = options.provider ?? createBriefInferenceProvider(env, fetch, {
+    maxTokens: 1200, disableThinking: true, jsonMode: true,
+  });
   const policy = options.policy === undefined ? getBriefQuotaPolicy() : options.policy;
   return {
     db, auth: new AuthService(db, env, now), briefs: new BriefService(db, now),

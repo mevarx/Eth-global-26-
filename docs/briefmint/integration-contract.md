@@ -1,4 +1,6 @@
-# BriefMint implementation contract — v1.2
+> **Current status (7 November 2026 IST):** This engineering record retains historical instructions/checkpoints. For the integrated Next.js setup use the [README](../../README.md); for successful app generation and Arkiv create/read/discovery use [live evidence](../evidence/LIVE_DEMO.md). Earlier Vite-city, HTTP 502-only, no-publication and backend-branch claims are historical. Independent TEE proof and live update/close/expiry remain unverified; do not retry the original unknown R3 intent.
+
+# BriefMint implementation contract: v1.2
 
 Authority: the user-approved `BriefMint-PRD.md` and `BriefMint-Mind-Map.opml` in the parent `Eth Global` directory, read completely for this foundation. They supersede the old translation product plan for BriefMint. Legacy translation/payment behavior remains intact. This document freezes the locally implemented contract and explicitly separates it from unproven live inference, chain, browser-journey and deployment evidence.
 

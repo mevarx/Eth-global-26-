@@ -8,6 +8,7 @@ export default function BriefEvidence({ brief }: { brief: BriefView }) {
   return (
     <div className="card">
       <h3>Compilation evidence</h3>
+      {brief.publicationCopy && <p className="notice">Generation reused from the original brief, revision R{brief.publicationCopy.sourceRevision}. This copy made no inference request; the request evidence below belongs to that original generation.</p>}
       <dl>
         <div><dt>Execution</dt><dd>{brief.executionStatus} · attempts used {brief.attemptsUsed}{brief.retryEligible ? " · retry eligible" : ""}</dd></div>
         <div><dt>Review</dt><dd>{brief.review.status}{brief.review.status === "approved" ? ` · approved r${brief.review.approval.draftRevision}` : ""}</dd></div>
@@ -25,7 +26,7 @@ export default function BriefEvidence({ brief }: { brief: BriefView }) {
           <div><dt>Verification requested</dt><dd>{ev.verificationRequested ? "yes" : "no"}</dd></div>
           <div><dt>Router-reported verification</dt><dd>
             {ev.routerVerification === null || ev.routerVerification === undefined ? (
-              <span className="badge">not reported — not verified</span>
+              <span className="badge">not reported, not verified</span>
             ) : ev.routerVerification ? (
               <span className="badge badge-ready">router reports verified</span>
             ) : (
@@ -34,7 +35,7 @@ export default function BriefEvidence({ brief }: { brief: BriefView }) {
           </dd></div>
           <div><dt>Independent response verification</dt><dd>
             {ev.independentResponseVerification === "unavailable" ? (
-              <span className="badge">not performed — unknown</span>
+              <span className="badge">not performed, unknown</span>
             ) : ev.independentResponseVerification === "verified" ? (
               <span className="badge badge-ready">independently verified</span>
             ) : (
@@ -46,7 +47,7 @@ export default function BriefEvidence({ brief }: { brief: BriefView }) {
           {ev.sanitizedFailureReason && <div><dt>Failure detail</dt><dd>{ev.sanitizedFailureReason}</dd></div>}
         </dl>
       ) : (
-        <p className="tc-muted">Compilation evidence unavailable — not reported, not success.</p>
+        <p className="tc-muted">Compilation evidence unavailable, not reported, not success.</p>
       )}
       {brief.error && <p className="error" role="alert">{brief.error.code}: {brief.error.message}</p>}
       <p className="tc-muted">Private notes and model internals are never exposed here. Verification labels distinguish what was requested, what the Router reported, and what was independently checked.</p>

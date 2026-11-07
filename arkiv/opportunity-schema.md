@@ -1,3 +1,5 @@
+> **Historical schema draft, superseded.** The integrated adapter uses [the current schema](schema.md) and [live evidence](../docs/evidence/LIVE_DEMO.md). Fields, file paths, default lifetime and “no write yet” statements below describe an earlier implementation, not current behavior.
+
 # Arkiv opportunity schema — BriefMint public records
 
 Entity kind: **public work opportunity** (wallet-owned discovery for writing/design briefs).

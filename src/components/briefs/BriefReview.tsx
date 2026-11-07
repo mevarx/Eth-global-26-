@@ -6,7 +6,9 @@
 import { useMemo, useState } from "react";
 import { isApiError } from "@/lib/client/briefmint-api";
 import { briefmintApi } from "@/lib/client/briefmint-api";
+import { useSession } from "@/lib/client/use-session";
 import { useSaveDraft } from "@/lib/client/use-briefs";
+import { currentSessionGeneration, isCurrentSessionGeneration } from "@/lib/client/session-generation";
 import type { BriefCandidate, BriefView } from "@/lib/shared/briefmint";
 
 interface BriefReviewProps {
@@ -55,6 +57,7 @@ export function briefResultText(brief: BriefView): string {
 }
 
 export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
+  const { address } = useSession();
   const base = useMemo(() => savedCandidate(brief), [brief]);
   const [texts, setTexts] = useState<Record<SectionKey, string[]>>(() => ({
     deliverables: base?.sections.deliverables ?? [],
@@ -112,11 +115,13 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
       setError("Deliverables must not be empty.");
       return;
     }
+    const generation = currentSessionGeneration();
     try {
       const updated = await saveDraft.mutateAsync({ id: brief.id, req: { expectedRevision: brief.draftRevision, draft } });
+      if (!isCurrentSessionGeneration(generation)) return;
       onSaved(updated);
     } catch (e) {
-      if (isApiError(e) && e.status === 409) setError("CONFLICT: the brief changed — reload the saved revision before editing.");
+      if (isApiError(e) && e.status === 409) setError("CONFLICT: the brief changed, reload the saved revision before editing.");
       else setError(isApiError(e) ? `${e.code}: ${e.message}${e.retryable ? " (retryable)" : ""}` : "Could not save the draft.");
     }
   };
@@ -125,7 +130,7 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
     setError(null);
     setExporting(true);
     try {
-      const res = await briefmintApi.exportBrief(brief.id, { format, audience });
+      const res = await briefmintApi.exportBrief(brief.id, { format, audience }, address);
       const blob = new Blob([res.content], { type: res.mediaType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -178,15 +183,15 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
       <h4>Editable draft (revision {brief.draftRevision} → {brief.draftRevision + 1} on save)</h4>
       <div className="form-field">
         <label htmlFor="draft-title">Public title</label>
-        <input id="draft-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} disabled={pending || !editable} />
+        <input id="draft-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} disabled={!address || pending || !editable} />
       </div>
       <div className="form-field">
         <label htmlFor="draft-summary">Public summary</label>
-        <textarea id="draft-summary" value={summary} onChange={(e) => setSummary(e.target.value)} disabled={pending || !editable} />
+        <textarea id="draft-summary" value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!address || pending || !editable} />
       </div>
       <div className="form-field">
         <label htmlFor="draft-status">Candidate status</label>
-        <select id="draft-status" value={status} onChange={(e) => setStatus(e.target.value as "open" | "closed")} disabled={pending || !editable}>
+        <select id="draft-status" value={status} onChange={(e) => setStatus(e.target.value as "open" | "closed")} disabled={!address || pending || !editable}>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
         </select>
@@ -201,7 +206,7 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
               onChange={(e) =>
                 setTexts((d) => ({ ...d, [s.key]: d[s.key].map((t, i) => (i === n ? e.target.value : t)) }))
               }
-              disabled={pending || !editable}
+              disabled={!address || pending || !editable}
               aria-label={`${s.label} item ${n + 1}`}
             />
           ))}
@@ -209,7 +214,7 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
       ))}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="btn-row">
-        <button type="button" className="btn btn-primary" disabled={pending || !editable} onClick={save}>
+        <button type="button" className="btn btn-primary" disabled={!address || pending || !editable} onClick={save}>
           {pending ? "Saving…" : `Save draft (r${brief.draftRevision} → r${brief.draftRevision + 1})`}
         </button>
       </div>
@@ -217,15 +222,15 @@ export default function BriefReview({ brief, onSaved }: BriefReviewProps) {
       <div className="btn-row">
         <label>
           Audience{" "}
-          <select value={audience} onChange={(e) => setAudience(e.target.value as "private" | "public")} disabled={exporting}>
+          <select value={audience} onChange={(e) => setAudience(e.target.value as "private" | "public")} disabled={!address || exporting}>
             <option value="private">Private</option>
             <option value="public">Public (approved projection only)</option>
           </select>
         </label>
-        <button type="button" className="btn" disabled={exporting} onClick={() => runExport("txt")}>
+        <button type="button" className="btn" disabled={!address || exporting} onClick={() => runExport("txt")}>
           {exporting ? "Exporting…" : "Export TXT"}
         </button>
-        <button type="button" className="btn" disabled={exporting} onClick={() => runExport("json")}>
+        <button type="button" className="btn" disabled={!address || exporting} onClick={() => runExport("json")}>
           {exporting ? "Exporting…" : "Export JSON"}
         </button>
       </div>

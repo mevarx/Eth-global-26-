@@ -58,7 +58,7 @@ export default function IsoBuilding({
   ];
   const door = doorQuad(g, wallH);
   const data = Object.fromEntries(Object.entries(dataState).map(([k, v]) => [`data-${k}`, v]));
-  const nameY = cy + hh + 22;
+  const nameY = Math.min(apex.y, Tt.y - 7) - 42;
 
   return (
     <g
@@ -74,7 +74,7 @@ export default function IsoBuilding({
       onKeyDown={onKeyDown}
       style={{ "--i": index } as CSSProperties}
     >
-      <title>{`${def.name} — ${def.description}`}</title>
+      <title>{`${def.name}, ${def.description}`}</title>
       <g className="tc-bldg-pop">
         {/* ground shadow grows on hover via transform only */}
         <ellipse className="tc-bldg-shadow" cx={cx} cy={cy + hh * 0.55} rx={hw * 1.05} ry={hh * 0.6} fill="#00000022" />

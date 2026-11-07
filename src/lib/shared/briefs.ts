@@ -220,6 +220,9 @@ export const briefViewSchema = z.strictObject({
   immutableModelResult: modelResultSchema.nullable(), editedDraft: briefCandidateSchema.nullable(),
   draftRevision: revisionSchema, evidence: inferenceEvidenceSchema.nullable(), error: briefErrorSchema.nullable(),
   review: reviewSchema, publication: publicationSchema, createdAt: utcSchema, updatedAt: utcSchema,
+  /** Private provenance for an operator-created duplicate-risk demo copy; never projected publicly. */
+  publicationCopy: z.strictObject({ sourceBriefId: briefIdSchema, sourceRevision: revisionSchema,
+    sourceApprovalHash: publicHashSchema, duplicateRiskAcknowledged: z.literal(true) }).optional(),
 }).superRefine((brief, ctx) => {
   if ((brief.executionStatus === "ready" && (!brief.immutableModelResult || !brief.editedDraft))
     || (brief.review.status === "approved" && (brief.executionStatus !== "ready"
@@ -271,8 +274,13 @@ export const preparePublicationRequestSchema = z.strictObject({
   intentId: briefIdSchema, expectedRevision: revisionSchema, publicPayloadHash: publicHashSchema,
   operation: z.enum(["create", "update", "close"]),
 });
+export const publicationCopyRequestSchema = z.strictObject({
+  expectedRevision: revisionSchema, publicPayloadHash: publicHashSchema, acknowledgeDuplicateRisk: z.literal(true),
+});
 export const reconcilePublicationRequestSchema = z.strictObject({
   intentId: briefIdSchema, transactionHash: briefIdSchema.nullable(), entityKey: briefIdSchema.nullable(),
+  /** Manually supplied hashes must pass receipt/readback verification before binding. */
+  recovery: z.literal(true).optional(),
 });
 export const listBriefsQuerySchema = z.strictObject({ beforeId: briefIdSchema.optional() });
 /** Omitted audience preserves the original owner-only private download. Public means current approved projection. */
@@ -294,6 +302,7 @@ export const briefApi = {
   saveDraft: { method: "PUT", path: "/api/briefs/:id/draft", request: saveBriefDraftRequestSchema, response: briefApiResultSchema(briefViewSchema) },
   approve: { method: "POST", path: "/api/briefs/:id/approve", request: approveBriefRequestSchema, response: briefApiResultSchema(briefViewSchema) },
   prepare: { method: "POST", path: "/api/briefs/:id/publication/prepare", request: preparePublicationRequestSchema, response: briefApiResultSchema(publicationIntentSchema) },
+  publicationCopy: { method: "POST", path: "/api/briefs/:id/publication/copy", request: publicationCopyRequestSchema, response: briefApiResultSchema(briefViewSchema) },
   reconcile: { method: "POST", path: "/api/briefs/:id/publication/reconcile", request: reconcilePublicationRequestSchema, response: briefApiResultSchema(briefViewSchema) },
   refresh: { method: "POST", path: "/api/briefs/:id/publication/refresh", request: runBriefRequestSchema, response: briefApiResultSchema(briefViewSchema) },
   export: { method: "GET", path: "/api/briefs/:id/export", request: exportBriefQuerySchema, response: briefApiResultSchema(exportBriefResponseSchema) },

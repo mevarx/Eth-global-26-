@@ -2,7 +2,7 @@
 // Merchant console: wallet-signed publication / update / withdrawal via a
 // dynamic @/lib/arkiv/write import with the connected wallet transport,
 // plus the verified-settlements table and server CSV download.
-// This view covers verified app purchases only — not an exhaustive chain index.
+// This view covers verified app purchases only, not an exhaustive chain index.
 import { useCallback, useEffect, useState } from "react";
 import type { Transport } from "viem";
 import { useAccount, useWalletClient } from "wagmi";
@@ -55,7 +55,7 @@ export default function MerchantPage() {
           setExisting(address ? (list.find((w) => sameAddress(w.ownerAddress, address)) ?? null) : null);
           setListingNote(`Loaded ${list.length} listing(s) from Arkiv.`);
         } catch {
-          if (!cancelled) setListingNote("Arkiv query failed — listing state unknown.");
+          if (!cancelled) setListingNote("Arkiv query failed, listing state unknown.");
         }
       } catch {
         if (!cancelled) setListingNote("Public config unavailable.");
@@ -110,7 +110,7 @@ export default function MerchantPage() {
         await refreshListing(config, receipt.entityKey);
       }
     } catch (e) {
-      setWriteError(e instanceof Error ? e.message : "Wallet write failed. A declined signature is recoverable — no listing changed.");
+      setWriteError(e instanceof Error ? e.message : "Wallet write failed. A declined signature is recoverable, no listing changed.");
     } finally {
       setWriteBusy(false);
     }
@@ -136,7 +136,7 @@ export default function MerchantPage() {
         />
         <h2>Settlements</h2>
         <p className="tc-muted">
-          Verified app purchases only — settlements confirmed by the server after onchain verification. This table
+          Verified app purchases only, settlements confirmed by the server after onchain verification. This table
           never shows buyer drafts or translations, and it is not an exhaustive chain index.
         </p>
         <div className="btn-row">

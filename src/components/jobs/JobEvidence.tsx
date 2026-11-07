@@ -1,6 +1,6 @@
 "use client";
 // JobEvidence: actual listing/payment/request references with honest labels.
-// Null evidence means unavailable/not reported — never success.
+// Null evidence means unavailable/not reported, never success.
 // routerTeeVerified is a Router report, not independent verification.
 import type { JobView } from "@/lib/shared/domain";
 import { shortKey } from "@/components/workshop/WorkshopCard";
@@ -39,7 +39,7 @@ export default function JobEvidence({ job }: { job: JobView }) {
             <dt>Router-reported TEE verification</dt>
             <dd>
               {ev.routerTeeVerified === null || ev.routerTeeVerified === undefined ? (
-                <span className="badge">not reported — not verified</span>
+                <span className="badge">not reported, not verified</span>
               ) : ev.routerTeeVerified ? (
                 <span className="badge badge-ready">router reports verified</span>
               ) : (
@@ -49,7 +49,7 @@ export default function JobEvidence({ job }: { job: JobView }) {
           </div>
         </dl>
       ) : (
-        <p className="tc-muted">Inference evidence unavailable — not reported, not success.</p>
+        <p className="tc-muted">Inference evidence unavailable, not reported, not success.</p>
       )}
       <p className="tc-muted">
         Job <span className="tc-mono">{shortKey(job.id)}</span> · attempts used {job.attemptsUsed}

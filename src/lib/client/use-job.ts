@@ -1,5 +1,5 @@
 "use client";
-// Job hooks — Agent B owned. Polling and retries follow the cross-boundary
+// Job hooks: Agent B owned. Polling and retries follow the cross-boundary
 // invariants: poll GET job ~every 2s only while the job is in an active state;
 // payment verification retries with backoff on 202; `run` fires only from an
 // explicit user action (this hook never auto-runs on mount or refresh).

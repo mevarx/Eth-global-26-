@@ -1,9 +1,10 @@
 "use client";
-// Wallet + session controls — Agent B owned. Connect the project-owner wallet,
+// Wallet + session controls, Agent B owned. Connect the project-owner wallet,
 // switch between Rabdi (Arkiv publication) and Whitechain (legacy checkout),
 // sign in/out of the cookie session, and wrong-network hints. The wallet's
-// private key is never requested or handled — signing happens in the wallet.
+// private key is never requested or handled, signing happens in the wallet.
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { usePathname } from "next/navigation";
 import { useLogin, useLogout, useSession } from "@/lib/client/use-session";
 import {
   ARKIV_RABDI_ID,
@@ -23,11 +24,14 @@ function chainLabel(chainId: number | undefined): string {
 }
 
 export default function WalletControls({
-  expectedChainId = ARKIV_RABDI_ID,
+  expectedChainId,
 }: {
   /** Network the surrounding screen expects; defaults to Rabdi (Arkiv publication). */
   expectedChainId?: number;
 }) {
+  const pathname = usePathname();
+  const legacyScreen = pathname.startsWith("/jobs") || pathname.startsWith("/merchant");
+  const targetChainId = expectedChainId ?? (legacyScreen ? WHITECHAIN_ID : ARKIV_RABDI_ID);
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { connectors, connect, isPending: isConnecting, error: connectError } = useConnect();
@@ -38,11 +42,11 @@ export default function WalletControls({
     error: switchError,
   } = useSwitchChain();
   const session = useSession();
-  const login = useLogin();
+  const login = useLogin(legacyScreen ? "legacy" : "briefmint");
   const logout = useLogout();
 
   const sessionAddress = session.address;
-  const wrongNetwork = isConnected && chainId !== expectedChainId;
+  const wrongNetwork = isConnected && chainId !== targetChainId;
 
   return (
     <div className="wallet">
@@ -64,8 +68,9 @@ export default function WalletControls({
         <div className="wallet-row">
           <span className="wallet-chip" title={address}>
             <span className="wallet-dot" aria-hidden="true" />
-            {address ? truncateAddress(address) : "—"} <span className="wallet-chain">{chainLabel(chainId)}</span>
+            {address ? truncateAddress(address) : "-"} <span className="wallet-chain">{chainLabel(chainId)}</span>
           </span>
+          {legacyScreen && <>
           <button
             type="button"
             className="btn btn-sm btn-ghost"
@@ -84,6 +89,7 @@ export default function WalletControls({
           >
             {arkivChain.name}
           </button>
+          </>}
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => disconnect()}>
             Disconnect
           </button>
@@ -92,14 +98,14 @@ export default function WalletControls({
 
       {wrongNetwork && (
         <p role="status" className="wallet-warn">
-          Wrong network: this screen expects {chainLabel(expectedChainId)}.{" "}
+          Wrong network: this screen expects {chainLabel(targetChainId)}.{" "}
           <button
             type="button"
             className="btn btn-sm"
             disabled={isSwitching}
-            onClick={() => switchChain({ chainId: expectedChainId })}
+            onClick={() => switchChain({ chainId: targetChainId })}
           >
-            {isSwitching ? "Switching…" : `Switch to ${chainLabel(expectedChainId)}`}
+            {isSwitching ? "Switching…" : `Switch to ${chainLabel(targetChainId)}`}
           </button>
         </p>
       )}
@@ -124,18 +130,27 @@ export default function WalletControls({
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              disabled={login.isPending}
+              disabled={login.isPending || wrongNetwork || !!session.blockedReason}
               onClick={() => login.mutate(address)}
               title="Sign a login challenge (not a payment authorization)"
             >
               {login.isPending ? "Signing…" : "Log in with wallet"}
             </button>
-            {login.isError && <span role="alert" className="wallet-warn">Login failed — signature declined or expired.</span>}
+            {login.isError && <span role="alert" className="wallet-warn">{login.error instanceof Error ? login.error.message : "Login failed."}</span>}
           </>
         ) : (
           <span className="wallet-hint">Connect a wallet, then sign in.</span>
         )}
       </div>
+
+      {session.blockedReason && (
+        <p role="alert" className="wallet-warn">
+          {session.blockedReason} Private access is blocked.
+          <button type="button" className="btn btn-sm" disabled={logout.isPending} onClick={() => logout.mutate()}>
+            {logout.isPending ? "Ending session…" : "Retry logout"}
+          </button>
+        </p>
+      )}
 
       {connectError && <p role="alert" className="wallet-warn">{connectError.message}</p>}
       {switchError && <p role="alert" className="wallet-warn">{switchError.message}</p>}

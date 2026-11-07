@@ -1,4 +1,4 @@
-// Browser-only Arkiv workshop writes — Agent B owned.
+// Browser-only Arkiv workshop writes: Agent B owned.
 // Takes the connected wallet's transport (e.g. viem's custom(provider)) plus the signing
 // account; there is no shared server key that owns listings. Never imported by read.ts
 // and never imports server modules. No "use client" directive is needed in lib; callers

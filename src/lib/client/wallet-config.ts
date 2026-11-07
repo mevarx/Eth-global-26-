@@ -1,4 +1,4 @@
-// Client wallet/network configuration — Agent B owned.
+// Client wallet/network configuration: Agent B owned.
 // Chain IDs and the official token are hardcoded per the common contract (§4):
 // Whitechain 1874 + official test USDT 0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7,
 // Arkiv Rabdi 7794095. RPC/explorer URLs are public deployment data: ClientProviders

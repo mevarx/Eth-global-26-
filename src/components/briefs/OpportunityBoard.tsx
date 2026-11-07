@@ -2,11 +2,26 @@
 // Registry: real Arkiv opportunities through indexed queries.
 // Failed reads stay distinct from an empty catalogue; a failed refresh never
 // proves withdrawal or expiry. Closed records remain readable until expiry.
-// Text search filters client-side after the indexed fetch; category, status
-// and budget presence filter server-side through indexed fields.
+// Text search and budget presence filter client-side after the indexed fetch;
+// category and status filter server-side through indexed fields.
+// Presentation only: cards, filter bar and state panels live in components/opportunities.
 import { useState } from "react";
 import type { OpportunityFilters, OpportunityView } from "@/lib/shared/briefmint";
 import { filterOpportunities } from "@/lib/shared/briefmint-validation";
+import OpportunityCard, { CopyButton, BudgetText, FreshnessChip, OpportunityStatusChip } from "@/components/opportunities/OpportunityCard";
+import OpportunityFilterBar from "@/components/opportunities/OpportunityFilters";
+import { EmptyPanel, FailedPanel, LoadingPanel, StaleBanner } from "@/components/opportunities/OpportunityStates";
+import {
+  DEFAULT_FILTERS,
+  checksumAddress,
+  formatDeadline,
+  formatRefresh,
+  freshnessFor,
+  parseTimestamp,
+  safeHttpsUrl,
+  shortKey as shortEntityKey,
+} from "@/components/opportunities/opportunity-format";
+import "@/components/opportunities/opportunities.css";
 
 interface OpportunityBoardProps {
   opportunities: OpportunityView[];
@@ -22,7 +37,55 @@ interface OpportunityBoardProps {
 }
 
 export function shortKey(key: string): string {
-  return key.length > 14 ? `${key.slice(0, 8)}…${key.slice(-4)}` : key;
+  return shortEntityKey(key);
+}
+
+const LISTS = [
+  ["deliverables", "Deliverables"],
+  ["acceptanceCriteria", "Acceptance criteria"],
+  ["exclusions", "Exclusions"],
+  ["openQuestions", "Open questions"],
+] as const;
+
+function OpportunityDetail({ o, freshness, lastRefreshedAt }: { o: OpportunityView; freshness: "fresh" | "stale"; lastRefreshedAt: number | null }) {
+  const owner = checksumAddress(o.ownerAddress);
+  const contact = safeHttpsUrl(o.contactUrl);
+  return (
+    <aside className="opp-detail bm-glass bm-glass--text" aria-label="Selected opportunity">
+      <h3 className="bm-title-panel">{o.title}</h3>
+      <div className="opp-card__chips">
+        <OpportunityStatusChip opportunity={o} />
+        <FreshnessChip freshness={freshness} />
+      </div>
+      <p className="opp-detail__summary">{o.summary}</p>
+      <dl className="opp-detail__facts">
+        <div><dt>Owner</dt><dd>{owner ? <><span className="bm-mono">{owner}</span><CopyButton value={owner} label="owner address" /></> : "Address unavailable"}</dd></div>
+        <div><dt>Entity key</dt><dd><span className="bm-mono">{o.entityKey}</span><CopyButton value={o.entityKey} label="entity key" /></dd></div>
+        <div><dt>Advertised budget (unfunded)</dt><dd><BudgetText cents={o.budgetUsdCents} /></dd></div>
+        <div><dt>Revision</dt><dd className="bm-num">r{o.revision}</dd></div>
+        <div><dt>Deadline</dt><dd className="bm-num">{formatDeadline(o.deadline)}</dd></div>
+        <div>
+          <dt>Contact</dt>
+          <dd>
+            {contact
+              ? <a className="opp-card__link" href={contact} target="_blank" rel="noopener noreferrer">{contact}<span className="bm-sr-only"> (opens in a new tab)</span></a>
+              : (o.contactUrl ? "Not shown (not a valid HTTPS link)" : "None")}
+          </dd>
+        </div>
+        <div><dt>Expires at block</dt><dd className="bm-mono">{o.expiresAtBlock ?? "not reported"}</dd></div>
+      </dl>
+      {LISTS.map(([key, label]) => (
+        <section key={key} className="opp-detail__list">
+          <h4>{label}</h4>
+          {o[key].length > 0
+            ? <ul>{o[key].map((text, index) => <li key={index}>{text}</li>)}</ul>
+            : <p className="bm-muted">None listed.</p>}
+        </section>
+      ))}
+      <p className="bm-muted">{formatRefresh(lastRefreshedAt)}</p>
+      <p className="bm-muted">Anyone may reuse the namespace tag; only the actual owner address above can mutate this record. Content renders as untrusted text.</p>
+    </aside>
+  );
 }
 
 export default function OpportunityBoard(p: OpportunityBoardProps) {
@@ -30,88 +93,49 @@ export default function OpportunityBoard(p: OpportunityBoardProps) {
   const f = p.filters;
 
   const visible = filterOpportunities(p.opportunities, { ...f, query });
-  const setFilter = (patch: Partial<OpportunityFilters>) => p.onFiltersChange({ ...f, ...patch });
+  const hasRows = p.opportunities.length > 0;
+  const freshness = freshnessFor(p.stale || (!!p.error && hasRows));
+  const lastRefreshedAt = parseTimestamp(p.lastRefresh);
+  const resetFilters = () => {
+    setQuery("");
+    p.onFiltersChange({ ...DEFAULT_FILTERS });
+  };
 
   return (
-    <div>
-      <div className="btn-row">
-        <button type="button" className="btn" onClick={p.onRefresh} disabled={p.loading}>
-          {p.loading ? "Refreshing…" : "Refresh opportunities"}
-        </button>
-        <label>
-          Category{" "}
-          <select value={f.category ?? "all"} onChange={(e) => setFilter({ category: e.target.value as OpportunityFilters["category"] })}>
-            <option value="all">All</option>
-            <option value="writing">Writing</option>
-            <option value="design">Design</option>
-          </select>
-        </label>
-        <label>
-          Status{" "}
-          <select value={f.status ?? "open"} onChange={(e) => setFilter({ status: e.target.value as OpportunityFilters["status"] })}>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="all">All</option>
-          </select>
-        </label>
-        <label>
-          Budget{" "}
-          <select value={f.budget ?? "all"} onChange={(e) => setFilter({ budget: e.target.value as OpportunityFilters["budget"] })}>
-            <option value="all">All</option>
-            <option value="with">Advertised</option>
-            <option value="without">Not advertised</option>
-          </select>
-        </label>
-      </div>
-      <div className="form-field">
-        <label htmlFor="opp-query">Search title/summary</label>
-        <input id="opp-query" type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. launch graphics" />
-      </div>
-      {p.lastRefresh && <p className="tc-muted">Last successful refresh: {new Date(p.lastRefresh).toLocaleString()}</p>}
-      {p.stale && !p.loading && <p className="notice" role="status">Showing last confirmed list (stale) — the catalogue could not be refreshed.</p>}
-      {p.loading && <p className="tc-muted">Querying Arkiv indexed records…</p>}
-      {p.error && !p.loading && <p className="error" role="alert">{p.error}</p>}
-      {!p.loading && !p.error && p.opportunities.length === 0 && (
-        <p className="tc-muted">No opportunities published yet — the public catalogue is empty (not an error).</p>
-      )}
-      {!p.loading && !p.error && p.opportunities.length > 0 && visible.length === 0 && (
-        <p className="tc-muted">No records match the current filters.</p>
-      )}
-      <ul className="job-list">
-        {visible.map((o) => (
-          <li key={o.entityKey}>
-            <button
-              type="button"
-              onClick={() => p.onSelect(o)}
-              aria-pressed={p.selected?.entityKey === o.entityKey}
-              style={{ all: "unset", cursor: "pointer", width: "100%" }}
-            >
-              <span className="badge">{o.category}</span>{" "}
-              <span className={o.status === "open" ? "badge badge-fresh" : "badge badge-stale"}>{o.status}</span>{" "}
-              <strong>{o.title}</strong>
-              <br />
-              <span className="tc-muted">{o.summary.slice(0, 140)}</span>
-              <br />
-              <span className="tc-mono tc-muted">
-                {shortKey(o.entityKey)} · r{o.revision} · {o.budgetUsdCents === null ? "no advertised budget (unfunded)" : `$${(o.budgetUsdCents / 100).toFixed(2)} (unfunded)`} · deadline {o.deadline}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {p.selected && (
-        <div className="card">
-          <h3>Selected opportunity</h3>
-          <dl>
-            <div><dt>Title</dt><dd>{p.selected.title}</dd></div>
-            <div><dt>Owner</dt><dd className="tc-mono">{p.selected.ownerAddress}</dd></div>
-            <div><dt>Entity key</dt><dd className="tc-mono">{p.selected.entityKey}</dd></div>
-            <div><dt>Revision / status</dt><dd>r{p.selected.revision} · {p.selected.status} · {p.selected.freshness}</dd></div>
-            <div><dt>Deadline</dt><dd className="tc-mono">{p.selected.deadline}</dd></div>
-            <div><dt>Contact</dt><dd className="tc-mono">{p.selected.contactUrl ?? "none"}</dd></div>
-            <div><dt>Expires at block</dt><dd className="tc-mono">{p.selected.expiresAtBlock ?? "not reported"}</dd></div>
-          </dl>
-          <p className="tc-muted">Anyone may reuse the namespace tag; only the actual owner address above can mutate this record. Content renders as untrusted text.</p>
+    <div className="opp-board" aria-busy={p.loading}>
+      <OpportunityFilterBar
+        filters={f}
+        onFiltersChange={p.onFiltersChange}
+        query={query}
+        onQueryChange={setQuery}
+        onRefresh={p.onRefresh}
+        loading={p.loading}
+        shownCount={visible.length}
+        totalCount={p.opportunities.length}
+      />
+      {p.loading && !hasRows && <LoadingPanel />}
+      {!p.loading && p.error && !hasRows && <FailedPanel message={p.error} onRetry={p.onRefresh} />}
+      {!p.loading && hasRows && (p.stale || p.error) && <StaleBanner message={p.error} />}
+      {!p.loading && !p.error && !hasRows && <EmptyPanel />}
+      {!p.loading && !p.error && hasRows && visible.length === 0 && <EmptyPanel filtered onReset={resetFilters} />}
+      {(visible.length > 0 || p.selected) && (
+        <div className="opp-layout">
+          {visible.length > 0 && (
+            <ul className={`opp-grid${p.loading ? " opp-grid--busy" : ""}`}>
+              {visible.map((o) => (
+                <li key={o.entityKey}>
+                  <OpportunityCard
+                    opportunity={o}
+                    freshness={freshness}
+                    lastRefreshedAt={lastRefreshedAt}
+                    selected={p.selected?.entityKey === o.entityKey}
+                    onSelect={p.onSelect}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          {p.selected && <OpportunityDetail o={p.selected} freshness={freshness === "fresh" ? "fresh" : "stale"} lastRefreshedAt={lastRefreshedAt} />}
         </div>
       )}
     </div>

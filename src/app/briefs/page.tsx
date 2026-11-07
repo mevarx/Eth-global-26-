@@ -10,7 +10,7 @@ import { useSession } from "@/lib/client/use-session";
 export default function BriefsPage() {
   const sessionQ = useSession();
   const address = sessionQ.address;
-  const briefsQ = useBriefs(!!address);
+  const briefsQ = useBriefs(!!address, undefined, address);
 
   let body: React.ReactNode;
   if (sessionQ.loading) {
@@ -25,7 +25,7 @@ export default function BriefsPage() {
       <p className="notice">Connect the project-owner wallet and sign in to see private briefs.</p>
     ) : isApiError(e) && (e.status === 503 || e.code === "SERVICE_UNAVAILABLE") ? (
       <p className="notice" role="status">
-        BriefMint backend unavailable (503) — private briefs cannot be listed yet. Nothing was fabricated; no fixture substituted.
+        BriefMint backend unavailable (503), private briefs cannot be listed yet. Nothing was fabricated; no fixture substituted.
       </p>
     ) : (
       <p className="error" role="alert">
@@ -38,10 +38,14 @@ export default function BriefsPage() {
 
   return (
     <AppShell>
-      <div className="tc-page">
-        <h1>My Briefs</h1>
-        <p className="tc-muted">Owner-only. Reopening a brief loads saved content — never recompiles.</p>
-        {body}
+      <div className="bm-dash-page">
+        <header className="bm-glass bm-glass--text bm-dash-panel">
+          <h1>My Briefs</h1>
+          <p>Owner-only. Reopening a brief loads saved content, never recompiles.</p>
+        </header>
+        <section className="bm-glass bm-glass--text bm-dash-panel" aria-label="Your briefs">
+          {body}
+        </section>
       </div>
     </AppShell>
   );

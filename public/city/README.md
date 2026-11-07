@@ -1,12 +1,7 @@
-# `public/city/` — asset attribution
+# City assets and attribution
 
-All Tool City artwork is ORIGINAL, authored for this project as inline
-React SVG + CSS (see `src/components/city/` and `src/app/globals.css`):
-isometric buildings, worker, streets, and nameplates drawn from the
-`scene-config.ts` geometry. No third-party images, icon packs, fonts, sprite
-sheets, or game-engine assets are used anywhere in the city scene.
+The current city is rendered from code in `src/components/city/` with Pixi.js and SVG/CSS overlays. This directory contains no screenshot or binary artwork assets at this checkpoint. Bundled font dependencies include Inter and Space Mono; preserve their upstream notices.
 
-This directory currently holds no binary assets and needs none: the city
-renders from code. If a file is ever added here, its source and license must
-be recorded in this README first — unattributed third-party art is not
-accepted.
+An earlier version of this file described all artwork as original and claimed there were no third-party fonts or game-engine assets. That blanket claim has not been established and does not describe the installed Pixi/font dependencies. [The historical version](https://github.com/0xsan7/Eth-global-26-/blob/79be23a/public/city/README.md) remains available for provenance.
+
+The maintainers must verify rights for inherited city/reference code and any external visual sources before assigning a repository license or claiming every asset is original. Record source, author, permission/license and modifications for future artwork here. See [submission attribution status](../../docs/submission/ATTRIBUTION.md).

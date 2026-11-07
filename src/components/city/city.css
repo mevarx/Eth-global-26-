@@ -153,7 +153,6 @@
 
 /* ---------- E. Page load ---------- */
 .tc-bldg-pop { animation: tc-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) calc(var(--i, 0) * 90ms) both; }
-.hud-window { animation: tc-fadein 400ms ease-out 150ms both; }
 @keyframes tc-pop {
   from { transform: translateY(8px) scale(0.86); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
@@ -163,7 +162,7 @@
 /* ---------- full-screen game + HUD layer ---------- */
 .city-page { background: var(--water); }
 .game { position: fixed; inset: 0; overflow: hidden; background: var(--water); }
-.game-world { position: absolute; inset: 0; touch-action: none; cursor: grab; user-select: none; }
+.game-world { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
 .game-world[data-dragging] { cursor: grabbing; }
 .game-world canvas { position: absolute; inset: 0; }
 .game-fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -174,52 +173,46 @@
 .game-world[data-dragging] .game-hit { cursor: grabbing; }
 .game-hit:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
 
-.hud-layer { position: absolute; inset: 0; pointer-events: none; display: flex; justify-content: space-between; gap: 1rem; padding: 1rem; }
-.hud-col { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; }
-.hud-col--left { width: min(380px, 34vw); }
-.hud-col--right { width: 380px; }
+.game-fallback { width: calc(100% - var(--map-right-inset, 0px)); }
+/* World-space SVG layers: one transformed box, written from the camera store (see CityScene). */
+.game-overlay { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+
+/* Glass HUD: status card (top left), right panel, action bar (bottom left). */
+.hud-layer { position: absolute; z-index: 2; inset: 0; pointer-events: none; display: flex; justify-content: space-between; gap: 1.25rem; padding: 1.25rem; }
+.hud-col { display: flex; flex-direction: column; gap: 0.85rem; min-height: 0; min-width: 0; }
+.hud-col--left { order: 0; width: min(340px, 28vw); }
+.hud-col--right { order: 1; width: min(420px, 55vw); flex-shrink: 0; }
+.hud-col--right > * { flex: 1; min-height: 0; }
 .hud-col-spacer { flex: 1; }
-.hud-hint {
-  pointer-events: auto; align-self: flex-start; display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.3rem 0.4rem 0.3rem 0.65rem; background: color-mix(in srgb, var(--paper) 88%, transparent); border: 1px solid var(--rule);
-  font-family: var(--font-hud); font-size: 10px; letter-spacing: 0.1em; color: var(--ink-soft);
-}
-.hud-hint-btns { display: flex; gap: 0.25rem; }
-
-.scan-row { display: flex; align-items: baseline; gap: 0.6rem; }
-.scan-big { font-family: var(--font-hud); font-size: 30px; font-weight: 700; line-height: 1; color: var(--ink); }
-.scan-right { margin-left: auto; }
-
-.order-status { margin: 0 0 0.4rem; font-size: 13px; }
-.order-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.35rem 0.35rem 0.6rem; border: 2px solid color-mix(in srgb, var(--accent) 55%, var(--rule)); background: var(--paper-deep); }
-.order-prompt { font-family: var(--font-hud); color: var(--accent); font-weight: 700; }
-.order-text { flex: 1; font-family: var(--font-hud); font-size: 12px; letter-spacing: 0.04em; color: var(--ink); }
-
-.console-top { display: grid; gap: 0.6rem; padding-bottom: 0.7rem; margin-bottom: 0.7rem; border-bottom: 2px solid var(--rule); }
-.console-name { display: block; font-family: var(--font-hud); font-size: 18px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
-.console-sub { display: block; font-family: var(--font-hud); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
-.building-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.8rem; }
-.building-tab {
-  font-family: var(--font-hud); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-soft); background: transparent; border: 2px solid var(--rule); padding: 0.3rem 0.5rem; cursor: pointer;
-}
-.building-tab:hover { color: var(--ink); border-color: var(--rule-strong); }
-.building-tab[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-.console-body .card { margin: 0.6rem 0; padding: 0.75rem; }
+.hud-card { pointer-events: auto; display: grid; gap: var(--bm-space-2); padding: var(--bm-space-3) var(--bm-space-4); border-radius: var(--bm-radius-lg); color: var(--bm-text-primary); font: 400 var(--bm-text-sm)/var(--bm-leading) var(--bm-font-body); }
+.hud-card[data-tone="warn"] { border-color: var(--bm-warning); }
+.hud-card :focus-visible { outline: var(--bm-focus-ring); outline-offset: var(--bm-focus-offset); }
+.hud-card__title { margin: 0; font: 700 var(--bm-text-xs)/1.3 var(--bm-font-body); letter-spacing: 0.08em; }
+.hud-card__note { margin: 0; font-size: var(--bm-text-xs); color: var(--bm-text-secondary); }
+.hud-scan { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--bm-space-2); }
+.hud-scan__big { font: 700 28px/1 var(--bm-font-heading); }
+.hud-scan .bm-chip { margin-left: auto; }
+.hud-chips { display: flex; flex-wrap: wrap; gap: var(--bm-space-1); }
+.hud-bar__status { margin: 0; font-size: var(--bm-text-sm); }
+.hud-bar__row { display: flex; align-items: center; gap: var(--bm-space-2); flex-wrap: wrap; }
+.hud-bar__row > .bm-btn--primary { flex: 1 1 auto; }
+.hud-bar__idle { flex: 1 1 auto; }
+.hud-zoom { display: inline-flex; gap: var(--bm-space-1); margin-left: auto; }
 .hud-field { display: grid; gap: 0.35rem; }
-
+.console-top { display: grid; gap: var(--bm-space-3); }
 @media (max-width: 1000px) {
-  .hud-col--left { width: 320px; }
-  .hud-col--right { width: 340px; }
-}
-/* Narrow screens: the map becomes a framed viewport and windows stack below it. */
-@media (max-width: 860px) {
-  .game { position: relative; inset: auto; overflow: visible; background: var(--paper-deep); }
-  .game-world { position: relative; height: 62vh; min-height: 340px; background: var(--water); }
-  .hud-layer { position: static; flex-direction: column; padding: 0.75rem; }
-  .hud-col--left, .hud-col--right { width: auto; }
+  .game { position: fixed; inset: 0; overflow: hidden; background: var(--water); }
+  .hud-layer { position: absolute; display: block; padding: 1rem; }
+  .hud-col--right { position: absolute; top: 1rem; right: 1rem; width: min(420px, 52vw); height: min(72svh, 720px); }
+  .hud-col--left { position: absolute; left: 1rem; bottom: 1rem; width: min(340px, 38vw); max-height: 38svh; overflow: auto; }
   .hud-col-spacer { display: none; }
-  .hud-window--fill > .hud-window__body { overflow: visible; }
+  .game-world { position: absolute; inset: 0; height: auto; min-height: 0; background: var(--water); touch-action: none; }
+}
+@media (max-width: 540px) {
+  .hud-layer { padding: 0.65rem; }
+  .hud-col--right { top: 0.65rem; left: 0.65rem; right: 0.65rem; width: auto; height: 53svh; }
+  .hud-col--left { left: 0.65rem; right: 0.65rem; bottom: 0.65rem; width: auto; max-height: 31svh; }
+  .hud-col { gap: 0.45rem; }
 }
 
 /* ---------- global motion switch ---------- */

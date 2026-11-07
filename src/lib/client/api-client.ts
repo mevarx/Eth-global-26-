@@ -1,7 +1,7 @@
-// Typed fetch wrapper for the §6 HTTP contract — Agent B owned. Client-safe.
+// Typed fetch wrapper for the §6 HTTP contract: Agent B owned. Client-safe.
 // Every helper speaks the ApiResult<T> envelope with credentials:"same-origin"
-// and JSON bodies. Failures throw ApiError {code,message,retryable,status} —
-// never a raw HTML string — so UI can branch on 401/404/409/502/503 safely.
+// and JSON bodies. Failures throw ApiError {code,message,retryable,status}:
+// never a raw HTML string: so UI can branch on 401/404/409/502/503 safely.
 import type {
   ApiResult,
   ChallengeResponse,
@@ -172,8 +172,12 @@ export const api = {
   config(): Promise<PublicConfig> {
     return get<ConfigResponse>("/api/config");
   },
-  challenge(address: string): Promise<ChallengeResponse> {
-    return get<ChallengeResponse>(`/api/auth/challenge?address=${encodeURIComponent(address)}`);
+  challenge(address: string, purpose: "briefmint" | "legacy" = "legacy"): Promise<ChallengeResponse> {
+    const query = new URLSearchParams({ address });
+    // The server preserves the legacy chain (1874) when purpose is omitted.
+    // BriefMint must explicitly request its Arkiv chain (7794095).
+    if (purpose === "briefmint") query.set("purpose", "briefmint");
+    return get<ChallengeResponse>(`/api/auth/challenge?${query.toString()}`);
   },
   verify(challengeId: string, signature: string): Promise<VerifyResponse> {
     return post<VerifyResponse>("/api/auth/verify", { challengeId, signature });

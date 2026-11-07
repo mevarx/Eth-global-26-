@@ -1,6 +1,8 @@
+> **Current status (7 November 2026 IST):** This engineering record retains historical instructions/checkpoints. For the integrated Next.js setup use the [README](../../README.md); for successful app generation and Arkiv create/read/discovery use [live evidence](../evidence/LIVE_DEMO.md). Earlier Vite-city, HTTP 502-only, no-publication and backend-branch claims are historical. Independent TEE proof and live update/close/expiry remain unverified; do not retry the original unknown R3 intent.
+
 # BriefMint demo notes (2–3 minutes)
 
-Use a synthetic organizer brief and clearly say the content is synthetic. Do not show a real secret, private contact, API key, cookie, wallet signature, or personal source notes. Keep the demo within evidenced behavior; no successful live inference, Arkiv record, lifecycle, production deployment, or independent response verification has been established yet. The one recorded 0G inference attempt returned HTTP 502 / `PROVIDER_UNAVAILABLE`; whether it incurred a debit remains uncertain. Do not imply a bounty is funded or earned.
+Use a synthetic organizer brief and clearly say the content is synthetic. Do not show a real secret, private contact, API key, cookie, wallet signature, or personal source notes. The operator reports one successful standalone 0G smoke response (HTTP 200, valid structure), but no live BriefMint app generation, Arkiv record/lifecycle, production deployment, or independent response verification is established. Router verification/routing metadata was null and debit/credit source remain unknown. The prior HTTP 502 was overcome for that one request. Do not imply a bounty is funded or earned.
 
 ## Copyable synthetic intake
 
@@ -36,7 +38,7 @@ The advertised USD 25 is an unfunded statement, with no escrow, payment promise 
 
 ## Claims and provenance
 
-- Current evidence includes a public 0G catalog preflight and a failed HTTP 502 inference attempt. The probe's `independentResponseVerification` is unavailable. Router-reported billing or token values are not proof of actual debit; verify the intended account/pool's before-and-after usage or report debit unknown.
+- Current operator-reported evidence includes a public 0G catalog preflight and one successful standalone inference with missing Router verification/routing metadata. The probe's `independentResponseVerification` is unavailable. Router-reported billing or token values are not proof of actual debit; verify the intended account/pool's before-and-after usage or report debit unknown.
 - No successful inference, live Arkiv create/readback/filter/update/close/expiry, production hosting, or persistent-host recovery is evidenced. Do not use future operator procedures as if they were completed.
 - No funded bounty or award is established. Check current sponsor terms and the official event submission deadline directly before stating either as a fact.
 - Known city source snapshot: `cb0db61d3515ee0621547f7832e9826f4be08f2e`. Disclose AI assistance. Original authorship and license provenance for all source/art assets have not been established; perform and document a third-party asset/library license audit before claiming ownership or that all assets are original.

@@ -1,4 +1,4 @@
-// Workshop entity schema — Agent B owned.
+// Workshop entity schema: Agent B owned.
 // Pure definition only: no React, no wallet, no secrets, no browser globals.
 // Safe to import from both browser code and the server (read.ts is server-neutral).
 

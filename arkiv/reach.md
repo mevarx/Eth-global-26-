@@ -1,30 +1,5 @@
-# Reach — who would use this
+# Arkiv reach
 
-No invented users, no staged testimonials. Status at writing: the Arkiv
-read/write modules are implemented and typechecked, but no live listing has
-been published and no buyer flow has run against them, so **no usage evidence
-exists yet**.
+Demonstrated reach is one public opportunity record, not a user-growth claim. The live entity is `0x85ea1b83ec04c6f9ff795d75cfbd5f2d136cb69bb571c4ec6ec18dce648bb121` on chain 7794095, created by the owner wallet and discoverable through Arkiv’s public index. Its receipt, transaction, canonical hash, and readback are listed in [live evidence](../docs/evidence/LIVE_DEMO.md).
 
-## Intended users (from the project scope, not from observation)
-
-1. **The merchant** — one workshop owner who publishes the `en → hi`
-   translation service on Arkiv, updates its title/description, and withdraws
-   it (`active=false`) when it should stop taking new jobs. Reached via the
-   merchant console (owner wallet required).
-2. **Buyers of English → Hindi translation** — someone with ~100–250 words of
-   English text who discovers the workshop, pays fixed-price test USDT on
-   Whitechain, and receives a reviewable Hindi draft. Reached via the city
-   discovery page and My Jobs.
-3. **A Hindi reviewer** — the buyer (or someone they share the export with)
-   checking the draft segment-by-segment. The brief requires confirming a
-   real reviewer before calling the translation useful; that confirmation has
-   not happened yet.
-
-## What would count as evidence
-
-- A Rabdi entity key + owner address for a merchant-published workshop.
-- A buyer job created from that listing, paid, run, and reviewed.
-- Reviewer feedback on actual Hindi output quality.
-
-None of the above exists at this commit. This file will be updated with
-addresses, keys, and quotes only when they are real.
+No external users, applicants, downstream reuse, adoption, or measured reach are established. The project has no applicant workflow, escrow, or payment. Future reach should be reported from actual user trials and public-record reads rather than inferred from the existence of a chain record.

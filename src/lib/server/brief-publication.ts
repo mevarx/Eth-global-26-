@@ -249,6 +249,23 @@ export class BriefPublicationService {
     if (row.transaction_hash && request.transactionHash && row.transaction_hash !== request.transactionHash) throw conflict();
     if (row.entity_key && request.entityKey && row.entity_key !== request.entityKey) throw conflict();
     if (intent.entityKey && request.entityKey && intent.entityKey !== request.entityKey) throw conflict();
+    if (request.recovery && !row.transaction_hash) {
+      if (!request.transactionHash) throw badInput("Recovery requires a known transaction hash.");
+      // A human-provided hash is only a candidate. Do not poison an unknown
+      // attempt with it until the receipt AND public entity bind it to this intent.
+      await this.network(async reader => {
+        const receipt = arkivTransactionSchema.parse(await reader.transaction(request.transactionHash!));
+        if (receipt.status !== "confirmed" || !sameAddress(receipt.signer, owner)) throw conflict();
+        const target = intent.entityKey ?? request.entityKey ?? (receipt.entityKeys.length === 1 ? receipt.entityKeys[0] : null);
+        if (!target || !receipt.entityKeys.includes(target)) throw conflict();
+        const { record, block } = await this.observation(reader, target);
+        if (!record || record.entityKey !== target || !sameAddress(record.ownerAddress, owner)
+          || BigInt(block.number) < BigInt(receipt.blockNumber) || BigInt(record.observedAtBlock) < BigInt(receipt.blockNumber)
+          || record.expiresAtBlock !== intent.expiresAtBlock
+          || canonicalPublicJson(record.payload) !== canonicalPublicJson(intent.payload)
+          || await hashPublicOpportunity(record.payload) !== intent.publicPayloadHash) throw conflict();
+      });
+    }
     if (row.status === "confirmed" || row.status === "reverted") return { brief: storedBriefView(getBrief(this.db, owner, id)), pending: false };
     const active = transaction(this.db, () => {
       const current = this.row(request.intentId);

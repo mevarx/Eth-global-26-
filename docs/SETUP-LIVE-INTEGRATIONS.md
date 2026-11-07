@@ -1,3 +1,5 @@
+> **Current status — 7 November 2026 IST:** This engineering record retains historical instructions/checkpoints. For the integrated Next.js setup use the [README](../README.md); for successful app generation and Arkiv create/read/discovery use [live evidence](evidence/LIVE_DEMO.md). Earlier Vite-city, HTTP 502-only, no-publication and backend-branch claims are historical. Independent TEE proof and live update/close/expiry remain unverified; do not retry the original unknown R3 intent.
+
 # Tool City — Live Setup From Zero
 
 **Prepared:** 6 November 2026. This is the prerequisite checklist for the feature branch. No wallet, credits, deployment or paid inference has been configured by the agent yet.
